@@ -42,7 +42,10 @@ export function BiometricTarget({ onPress, recognised, unavailable = false }: Pr
         // actionable button without this — the audit is explicit about not
         // relying on visual state alone.
         accessibilityState={{ disabled: unavailable }}
-        accessibilityLabel={unavailable ? 'Biometric unavailable' : biometric.signInPrompt}
+        // Same three states as the visible prompt. A screen-reader user who
+        // cannot see "Recognised — opening…" otherwise gets no confirmation
+        // that the touch worked.
+        accessibilityLabel={promptFor(recognised, unavailable)}
         accessibilityHint={unavailable ? undefined : 'Signs you in without a code'}
         testID="biometric-target"
         style={({ pressed }) => [styles.target, pressed && !unavailable && styles.pressed]}

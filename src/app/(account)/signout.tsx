@@ -30,11 +30,14 @@ export default function SignoutScreen() {
     running.current = true;
 
     try {
-      // PIN material and the durable slice are cleared separately, and both
-      // must go — leaving a PIN hash behind on an unbound device would let it
-      // unlock into a session that no longer exists.
-      await clearPin();
+      // Order matters. Clearing the PIN first and then failing to end the
+      // session leaves the worst state available: still signed in, with no PIN
+      // material — and "Stay signed in" is on this screen, so the borrower can
+      // walk away from the error into a session whose PIN path is gone until
+      // re-enrolment. Ending the session first fails safe: the session is over
+      // and a retry clears the stale PIN material.
       await auth.signOut();
+      await clearPin();
       loan.reset();
       router.replace('/(session)/newdevice');
     } catch {
