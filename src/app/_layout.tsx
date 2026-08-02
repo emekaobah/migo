@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { BOOT_BACKGROUND } from '@/theme';
+
 /**
  * Root layout. Providers (Auth, Loan, NavOrigin, Demo) land in Phase 2 —
  * Phase 0 only needs the app to boot on a navy surface.
@@ -16,7 +18,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#010065' },
+          contentStyle: { backgroundColor: BOOT_BACKGROUND },
         }}
       />
     </SafeAreaProvider>
