@@ -1,7 +1,6 @@
-import { duration } from '@/theme';
-
 import type { SmsRetriever } from '../interfaces/sms-retriever';
 import { delay } from './delay';
+import { LATENCY } from './fixtures';
 
 /**
  * Simulated SMS arrival.
@@ -22,7 +21,7 @@ export function createMockSmsRetriever(code = '419736'): SmsRetriever {
     async start() {
       pending?.cancel();
 
-      const arrival = delay(duration.smsArrival, code);
+      const arrival = delay(LATENCY.smsArrival, code);
       pending = arrival;
 
       void arrival.promise.then((received) => {

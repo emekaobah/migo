@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, type Href } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Screen, type Surface } from '@/components/ui';
@@ -9,8 +9,14 @@ type Props = Readonly<{
   id: string;
   title: string;
   surface: Surface;
-  /** Where this screen can go next, so the tree is walkable before it is built. */
-  next?: { label: string; href: string }[];
+  /**
+   * Where this screen can go next, so the tree is walkable before it is built.
+   *
+   * Typed as `Href`, not `string`: these are ~20 hand-written paths across the
+   * stub tree, and typed routes are the only thing that catches a typo in one
+   * before someone taps it.
+   */
+  next?: { label: string; href: Href }[];
 }>;
 
 /**
@@ -34,7 +40,7 @@ export function StubScreen({ id, title, surface, next = [] }: Props) {
 
         <View style={styles.links}>
           {next.map((link) => (
-            <Link key={link.href} href={link.href as never} style={styles.link}>
+            <Link key={String(link.href)} href={link.href} style={styles.link}>
               <Text style={[type.body, styles.linkLabel, onDark && styles.onDarkLink]}>
                 → {link.label}
               </Text>

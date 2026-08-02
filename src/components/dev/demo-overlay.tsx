@@ -36,7 +36,7 @@ export function DemoOverlay() {
   const jump = async (next: Journey) => {
     setJourney(next);
     const destination = await seedScenario(next, { auth, loan });
-    router.replace(destination as never);
+    router.replace(destination);
     setOpen(false);
   };
 
@@ -100,7 +100,7 @@ export function DemoOverlay() {
       </View>
 
       <Pressable
-        onPress={() => router.push('/(dev)/kitchen-sink' as never)}
+        onPress={() => router.push('/(dev)/kitchen-sink')}
         accessibilityRole="button"
         style={styles.row}
       >

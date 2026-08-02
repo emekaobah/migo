@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { biometric, color, radius, space, type } from '@/theme';
+import { usePlatform } from '@/state/use-platform';
+import { color, radius, space, type } from '@/theme';
 
 type Props = Readonly<{
   enrolled: boolean;
@@ -18,6 +19,8 @@ type Props = Readonly<{
  * being asked to trust.
  */
 export function BiometricCard({ enrolled, onPress, unavailableReason }: Props) {
+  const { biometric } = usePlatform();
+
   if (unavailableReason) {
     return (
       <View style={[styles.card, styles.untapped]}>

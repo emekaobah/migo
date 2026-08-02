@@ -1,3 +1,5 @@
+import type { Href } from 'expo-router';
+
 import { api } from '@/api/client';
 import { buildSchedule, totalRepayable } from '@/lib/loan-math';
 import { ACCOUNTS, BORROWER, TENORS } from '@/api/mock/fixtures';
@@ -28,7 +30,7 @@ type Seeder = {
   };
 };
 
-export async function seedScenario(journey: Journey, { auth, loan }: Seeder): Promise<string> {
+export async function seedScenario(journey: Journey, { auth, loan }: Seeder): Promise<Href> {
   // Every journey starts from a known-clean slate; the differences below are
   // additive, so a jump never inherits the previous journey's state.
   await auth.signOut();

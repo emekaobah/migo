@@ -72,7 +72,12 @@ export interface MigoApi {
   requestCode(phone: string): Promise<{ resendSeconds: number }>;
   verifyCode(code: string): Promise<{ ok: boolean }>;
   ussdCode(): Promise<{ code: string; validMinutes: number }>;
-  bindDevice(publicKey: string): Promise<{ ok: boolean }>;
+  /**
+   * Binds this handset. Returns the borrower's name because the server is what
+   * knows it — a screen reaching into the fixtures for a display name would
+   * mean rewriting the screen when a real backend arrives.
+   */
+  bindDevice(publicKey: string): Promise<{ ok: boolean; name: string }>;
   getOffers(): Promise<{ tenors: Tenor[]; amounts: number[] }>;
   listAccounts(): Promise<PayoutAccount[]>;
   acceptLoan(selection: OfferSelection, signature: string): Promise<Loan>;

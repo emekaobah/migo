@@ -10,6 +10,14 @@ import * as SecureStore from 'expo-secure-store';
  *
  * PIN material never passes through this module. It is written by
  * `lib/secure-pin.ts` under its own keys and never held in React state.
+ *
+ * **Loan state is deliberately absent.** It is server-held: in this build the
+ * mock owns it (`api/mock/index.ts`), and `LoanProvider` mirrors what the API
+ * returns rather than persisting its own copy. An earlier version carried
+ * `loanTaken`, `paidCount`, `extended` and `payoutAccountId` here, but nothing
+ * read them — two sources of truth for the same facts, the durable one frozen
+ * at its defaults. When the mock needs to survive a restart, that belongs in
+ * the mock, behind `MigoApi`, so the real HTTP client is still a drop-in.
  */
 
 const KEY = 'migo.durable.v1';
@@ -22,11 +30,6 @@ export type DurableState = {
   pinSet: boolean;
   phone: string | null;
   name: string | null;
-  /** Stands in for server-held loan state in this build. */
-  loanTaken: boolean;
-  paidCount: number;
-  extended: boolean;
-  payoutAccountId: string | null;
 };
 
 export const EMPTY: DurableState = {
@@ -36,10 +39,6 @@ export const EMPTY: DurableState = {
   pinSet: false,
   phone: null,
   name: null,
-  loanTaken: false,
-  paidCount: 0,
-  extended: false,
-  payoutAccountId: null,
 };
 
 export async function load(): Promise<DurableState> {

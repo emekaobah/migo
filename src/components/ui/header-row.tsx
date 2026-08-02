@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { color, control, showsInScreenBack, space, type } from '@/theme';
+import { usePlatform } from '@/state/use-platform';
+import { color, control, space, type } from '@/theme';
 
 import { BrandMark } from './brand-mark';
 
@@ -18,6 +19,8 @@ type Props = Readonly<
  * of platform mismatch the handoff calls out.
  */
 export function HeaderRow(props: Props) {
+  const { showsInScreenBack } = usePlatform();
+
   if (props.variant === 'back') {
     return (
       <View style={styles.row}>
