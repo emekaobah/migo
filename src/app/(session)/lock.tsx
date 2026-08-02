@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, HeaderRow, Screen } from '@/components/ui';
@@ -21,6 +21,10 @@ import { biometric, color, duration, onNavy, space, type } from '@/theme';
 export default function LockScreen() {
   const [recognised, setRecognised] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  // The target stays pressable while `authenticate` awaits, so without this a
+  // second press starts a second prompt and a second timer.
+  const signingIn = useRef(false);
+  const beat = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const auth = useAuth();
   const { openHelpFrom } = useNavOrigin();
@@ -41,16 +45,28 @@ export default function LockScreen() {
     };
   }, []);
 
+  // Leaving during the 700ms beat — "Use PIN instead" is one tap away — must
+  // not fire a replace that lands on top of wherever the borrower went.
+  useEffect(() => () => {
+    if (beat.current) clearTimeout(beat.current);
+  }, []);
+
   const signIn = async () => {
+    if (signingIn.current) return;
+    signingIn.current = true;
+
     const ok = await authenticate(`Sign in to Migo with your ${biometric.noun}`);
-    if (!ok) return;
+    if (!ok) {
+      signingIn.current = false;
+      return;
+    }
 
     // The beat before moving. Without it the screen changes under the finger
     // and the borrower cannot tell whether it worked.
     success();
     setRecognised(true);
     auth.setAuthed(true);
-    setTimeout(() => router.replace('/(session)/loading'), duration.biometric);
+    beat.current = setTimeout(() => router.replace('/(session)/loading'), duration.biometric);
   };
 
   return (

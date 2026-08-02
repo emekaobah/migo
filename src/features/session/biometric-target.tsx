@@ -11,6 +11,18 @@ type Props = Readonly<{
 }>;
 
 /**
+ * Three states, in priority order: recognition wins over everything, then the
+ * no-sensor fallback, then the platform prompt. Spelled out rather than nested
+ * inline, because the order is the meaning — a recognised borrower must not be
+ * told to use their PIN.
+ */
+function promptFor(recognised: boolean, unavailable: boolean): string {
+  if (recognised) return 'Recognised — opening…';
+  if (unavailable) return 'Use your PIN to sign in';
+  return biometric.signInPrompt;
+}
+
+/**
  * The sign-in target on `lock`.
  *
  * 112px is deliberate: this is the control a returning borrower taps every
@@ -26,6 +38,10 @@ export function BiometricTarget({ onPress, recognised, unavailable = false }: Pr
         onPress={onPress}
         disabled={unavailable}
         accessibilityRole="button"
+        // `disabled` stops the press but screen readers still announce an
+        // actionable button without this — the audit is explicit about not
+        // relying on visual state alone.
+        accessibilityState={{ disabled: unavailable }}
         accessibilityLabel={unavailable ? 'Biometric unavailable' : biometric.signInPrompt}
         accessibilityHint={unavailable ? undefined : 'Signs you in without a code'}
         testID="biometric-target"
@@ -34,9 +50,7 @@ export function BiometricTarget({ onPress, recognised, unavailable = false }: Pr
         <View style={styles.inner} />
       </Pressable>
 
-      <Text style={styles.prompt}>
-        {recognised ? 'Recognised — opening…' : unavailable ? 'Use your PIN to sign in' : biometric.signInPrompt}
-      </Text>
+      <Text style={styles.prompt}>{promptFor(recognised, unavailable)}</Text>
     </View>
   );
 }

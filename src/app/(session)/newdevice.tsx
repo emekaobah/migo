@@ -19,6 +19,7 @@ import { color, space, type } from '@/theme';
 export default function NewDeviceScreen() {
   const [code, setCode] = useState('— — — —');
   const [dialerUnavailable, setDialerUnavailable] = useState(false);
+  const [codeError, setCodeError] = useState(false);
   const router = useRouter();
   const auth = useAuth();
   const { openHelpFrom } = useNavOrigin();
@@ -31,7 +32,12 @@ export default function NewDeviceScreen() {
         // Four digits here, not the six-digit enrolment code.
         if (active) setCode(result.code.replace(/\s/g, '').slice(0, 4).split('').join(' '));
       })
-      .catch(() => undefined);
+      // Leaving the placeholder up while step 2 says "confirm this code
+      // appears" is worse than admitting it failed: the borrower cannot tell
+      // whether the dashes are the code or a broken screen.
+      .catch(() => {
+        if (active) setCodeError(true);
+      });
     return () => {
       active = false;
     };
@@ -68,6 +74,12 @@ export default function NewDeviceScreen() {
             anywhere else.
           </Text>
         </Card>
+
+        {codeError ? (
+          <Text style={styles.note}>
+            We could not fetch your code. Dial {NEW_DEVICE_CODE} — the code is shown there.
+          </Text>
+        ) : null}
 
         {dialerUnavailable ? (
           <Text style={styles.note}>This device can&apos;t dial. Enter {NEW_DEVICE_CODE} on your phone.</Text>

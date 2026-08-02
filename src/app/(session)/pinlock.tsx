@@ -6,7 +6,7 @@ import { Button, HeaderRow, InlineError, Keypad, PinDots, Screen } from '@/compo
 import { error as errorHaptic, success, tick } from '@/lib/haptics';
 import { PIN_LENGTH, verifyPin } from '@/lib/secure-pin';
 import { useAuth } from '@/state/auth-context';
-import { color, onNavy, space, type } from '@/theme';
+import { biometric, color, onNavy, space, type } from '@/theme';
 
 /**
  * Screen 6 — PIN sign-in.
@@ -25,6 +25,16 @@ export default function PinlockScreen() {
   const checking = useRef(false);
   const router = useRouter();
   const auth = useAuth();
+
+  /**
+   * `back()` does nothing when `pinlock` is the first route in the stack — a
+   * cold start straight here, or a lockout redirect. Navigate to `lock`
+   * explicitly instead of popping and hoping something is underneath.
+   */
+  const toBiometric = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(session)/lock');
+  };
 
   const append = (digit: string) => {
     if (pinDigits.length >= PIN_LENGTH || checking.current) return;
@@ -79,7 +89,7 @@ export default function PinlockScreen() {
 
   return (
     <Screen surface="navy">
-      <HeaderRow variant="back" onBack={() => router.back()} />
+      <HeaderRow variant="back" onBack={toBiometric} />
 
       <View style={styles.body}>
         <Text style={styles.heading}>Welcome back, {auth.name ?? 'there'}</Text>
@@ -102,12 +112,7 @@ export default function PinlockScreen() {
 
       <View>
         {error ? <InlineError message={error} onDark /> : null}
-        <Button
-          label="Use fingerprint instead"
-          variant="tertiary"
-          onDark
-          onPress={() => router.back()}
-        />
+        <Button label={`Use ${biometric.noun} instead`} variant="tertiary" onDark onPress={toBiometric} />
       </View>
     </Screen>
   );

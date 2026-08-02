@@ -61,6 +61,37 @@ describe('lock', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
+  it('starts only one prompt however fast the target is tapped', async () => {
+    localAuthMock.setScenario('success');
+    const { getByTestId } = await renderScreen();
+
+    // The guard is synchronous — it flips before `authenticate` is awaited — so
+    // a second press arriving any time before the first resolves must be a
+    // no-op. Two prompts would mean two timers, and the second replace firing
+    // after the borrower has already moved on.
+    await fireEvent.press(getByTestId('biometric-target'));
+    await fireEvent.press(getByTestId('biometric-target'));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(session)/loading'), {
+      timeout: 3000,
+    });
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not navigate after unmounting mid-beat', async () => {
+    localAuthMock.setScenario('success');
+    const { getByTestId, unmount } = await renderScreen();
+
+    await fireEvent.press(getByTestId('biometric-target'));
+    // Leave during the 700ms recognition beat — "Use PIN instead" is one tap
+    // away, and a stale replace would land on top of wherever they went.
+    unmount();
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it('offers the PIN as a full alternative, not a buried fallback', async () => {
     const { getByTestId } = await renderScreen();
 
