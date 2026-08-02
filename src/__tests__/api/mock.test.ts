@@ -142,6 +142,31 @@ describe('extendLoan', () => {
     expect(after.schedule[0].amount).not.toBe(Math.round(carried * TENORS[3].multiplier));
   });
 
+  it('keeps every earlier payment in the total across a second extension', async () => {
+    const before = await loanWithOnePaid();
+    const paidFirstInstalment = before!.schedule[0].amount;
+    const outstandingBefore = outstandingAfter(before!.schedule, before!.paidCount);
+    const payTodayFirst = Math.round(outstandingBefore * EXTENSION.pct);
+
+    const once = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+    const payTodaySecond = Math.round(
+      outstandingAfter(once.schedule, once.paidCount) * EXTENSION.pct,
+    );
+    const twice = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+
+    // Extending twice must not forget what was paid before the first extension.
+    // Deriving "already repaid" by slicing the schedule loses it: the first
+    // extension resets paidCount to 0 and replaces the schedule, so the slice
+    // is empty from then on and the loan understates its own lifetime cost.
+    expect(twice.total).toBe(
+      paidFirstInstalment +
+        payTodayFirst +
+        payTodaySecond +
+        outstandingAfter(twice.schedule, twice.paidCount),
+    );
+    expect(twice.total).toBeGreaterThan(once.total - outstandingAfter(once.schedule, 0));
+  });
+
   it('rejects a percentage passed as 30 instead of 0.3', async () => {
     await loanWithOnePaid();
     await expect(api.extendLoan(30)).rejects.toThrow(RangeError);

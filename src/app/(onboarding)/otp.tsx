@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
@@ -62,17 +62,16 @@ export default function OtpScreen() {
   );
 
   /**
-   * The latest `verify`, kept out of the effect's dependencies.
+   * Verifies the auto-filled code without becoming an effect dependency.
    *
    * `useRouter()` returns a fresh object on every render, so `advance` — and
    * `verify` with it — changes identity constantly. Keying the 1.4s timer on
    * that meant every countdown tick cleared and rescheduled it, and it never
    * reached the end: the screen sat on a filled-in code forever.
    */
-  const verifyRef = useRef(verify);
-  useEffect(() => {
-    verifyRef.current = verify;
-  }, [verify]);
+  const verifyAutoFilled = useEffectEvent((candidate: string) => {
+    void verify(candidate);
+  });
 
   // Listen for the code. Cancelled on unmount so leaving for the USSD path
   // does not leave a timer running behind a dead screen.
@@ -102,7 +101,7 @@ export default function OtpScreen() {
   // everything six digits long.
   useEffect(() => {
     if (!received) return;
-    const timer = setTimeout(() => void verifyRef.current(autoFilled.current), duration.otpAdvance);
+    const timer = setTimeout(() => verifyAutoFilled(autoFilled.current), duration.otpAdvance);
     return () => clearTimeout(timer);
   }, [received]);
 

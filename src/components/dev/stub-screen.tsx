@@ -20,6 +20,16 @@ type Props = Readonly<{
 }>;
 
 /**
+ * A stable key per link.
+ *
+ * `Href` is a string *or* an object target (`{ pathname, params }`) — and
+ * `String({...})` is `"[object Object]"` for every one of them, so two object
+ * hrefs would collide on the same React key. No stub uses the object form yet;
+ * the dynamic `faq/[section]` route is the obvious first one that will.
+ */
+const linkKey = (href: Href) => (typeof href === 'string' ? href : JSON.stringify(href));
+
+/**
  * Placeholder for a screen Phases 3–7 will build.
  *
  * Exists so the whole route tree is navigable at the end of Phase 2 — the
@@ -40,7 +50,7 @@ export function StubScreen({ id, title, surface, next = [] }: Props) {
 
         <View style={styles.links}>
           {next.map((link) => (
-            <Link key={String(link.href)} href={link.href} style={styles.link}>
+            <Link key={linkKey(link.href)} href={link.href} style={styles.link}>
               <Text style={[type.body, styles.linkLabel, onDark && styles.onDarkLink]}>
                 → {link.label}
               </Text>

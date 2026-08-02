@@ -45,9 +45,20 @@ export async function load(): Promise<DurableState> {
   try {
     const raw = await SecureStore.getItemAsync(KEY);
     if (!raw) return EMPTY;
-    // Spread over EMPTY so a state written by an older build is widened rather
-    // than leaving new fields undefined.
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<DurableState>) };
+
+    // Take only the keys the current shape declares, then fill the rest from
+    // EMPTY. This widens a record written by an *older* build, as before — and
+    // it also narrows one written by a *newer* build, or by a build whose
+    // fields have since been dropped. Spreading the parsed record wholesale did
+    // only the first: fields removed from `DurableState` still arrived from
+    // storage, flowed into React state, and were written straight back on the
+    // next save, where they would sit for the life of the install.
+    const stored = JSON.parse(raw) as Record<string, unknown>;
+    const known = Object.fromEntries(
+      Object.keys(EMPTY).filter((key) => stored[key] !== undefined).map((key) => [key, stored[key]]),
+    ) as Partial<DurableState>;
+
+    return { ...EMPTY, ...known };
   } catch {
     // Corrupt or unreadable state must not brick the app — a fresh start is
     // recoverable, a crash loop on boot is not.

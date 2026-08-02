@@ -146,9 +146,14 @@ export const mockApi: MigoApi = {
       nextDue,
     );
 
-    const alreadyRepaid = currentLoan.schedule
-      .slice(0, currentLoan.paidCount)
-      .reduce((sum, instalment) => sum + instalment.amount, 0);
+    // Everything paid across the loan's whole life, including any earlier
+    // extension's `payToday`. Deriving this by slicing the schedule looks
+    // equivalent and is not: an extension resets `paidCount` to 0 and replaces
+    // the schedule, so from the second extension on the slice is empty and the
+    // loan silently understates what it has cost. `total - outstanding` holds
+    // at every point, starting from `acceptLoan` where total is the schedule's
+    // sum and nothing is yet paid.
+    const alreadyRepaid = currentLoan.total - outstanding;
 
     currentLoan = {
       ...currentLoan,
