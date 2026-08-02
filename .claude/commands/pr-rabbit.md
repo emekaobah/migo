@@ -106,9 +106,18 @@ a commit nothing has reported on. Distinguish "nothing has started" from "someth
 Observed values: `success / Review completed`, `pending / Review in progress`, `pending / Review
 queued`, `success / Review rate limited`.
 
-**`success / Review rate limited` is not a clean review.** The free tier throttles re-reviews after
-consecutive pushes; findings may be missing entirely. Treat it as "review did not run", say so in the
-report, and do not present the PR as reviewed.
+**`success / Review rate limited` is not a clean review.** Consecutive rapid pushes get throttled and
+findings may be missing entirely. Treat it as "review did not run", say so in the report, and do not
+present the PR as reviewed. (This is throttling, not a plan limit — it happens on paid plans too.)
+
+**`Review completed` is not final either.** CodeRabbit posts additional findings *after* the status
+goes terminal — observed several minutes later on a PR already reported clean. So:
+
+- Never report "zero findings" off a single read. After a terminal status, wait ~3 minutes and read
+  the surfaces again before concluding anything is clean.
+- Always **timestamp the claim**: "no findings as of HH:MM" — not "the PR is clean".
+- If the user has already merged on the strength of a clean report, say so directly and open a
+  follow-up PR (step 5); do not quietly push to the merged branch.
 
 `gh pr checks N` is fine for a quick human-readable glance, but it reports against the PR's recorded
 head — which is why it can hand back a stale `SUCCESS` seconds after a push. Never use it as the
@@ -187,6 +196,20 @@ when `--paginate` is in play. A malformed filter returns empty, which is indisti
 The summary comment carries the collapsed **nitpick** and **outside diff range** sections — expand and
 include those; they are often where the real bugs hide.
 
+**A finding with zero review threads is not zero findings.** CodeRabbit puts nitpicks in the *review
+body* rather than as inline threads, so the thread query correctly returns nothing while real findings
+sit in `pulls/N/reviews`. Reading only threads produces a confident, wrong "no findings".
+
+```shell
+gh api repos/{owner}/{repo}/pulls/N/reviews --paginate \
+  --jq '.[] | select(.user.login=="coderabbitai[bot]") | select(.body != "")
+        | {id, submitted_at, body}'
+```
+
+Review bodies have **no thread and no `comment_id`**, so there is nothing to reply to and nothing to
+resolve — act on the content and say in the report that it came from a review body. Do not invent a
+thread reply for it, and do not skip the finding because it lacks an id.
+
 ### SonarCloud findings
 
 SonarCloud posts **no inline comments** — only a summary comment and a dashboard link. If you read only
@@ -251,6 +274,22 @@ If the two disagree about the same line, say so in the report rather than silent
   "no test script in this repo" rather than implying tests passed. If a check fails, fix it or drop
   the offending change — do not push a red branch and let CodeRabbit find it. Report real output
   either way; if you skipped a check, say which.
+- **Re-check the PR is still open immediately before you push.** Not at the start of the loop — the
+  user merges while you are working, and a push to a merged PR's branch silently goes nowhere:
+  GitHub accepts it, the closed PR never picks it up, and the fix is stranded on a dead branch. This
+  has happened twice. It is invisible unless you check, because the push reports success.
+  ```shell
+  gh pr view N --json state --jq .state    # must be OPEN
+  ```
+  If it is `MERGED` or `CLOSED`, **stop and do not push to that branch.** Rebase the work onto the
+  updated base and open a fresh PR:
+  ```shell
+  git fetch origin
+  git switch -c <new-branch> origin/main
+  git cherry-pick <your fix commits>
+  ```
+  Then tell the user plainly that their merge landed without these fixes and which PR now carries
+  them. Deleting the stale branch afterwards keeps the mistake from repeating.
 - Capture the CodeRabbit baseline timestamp (step 2) **before** pushing.
 - `git push` (no force). CodeRabbit will re-review the new commits automatically.
 - Optionally reply to each addressed thread. **A reply does not resolve anything** — the REST replies
@@ -282,6 +321,11 @@ tool raised what and whether both actually ran:
 State each tool's terminal status explicitly — `CodeRabbit: Review completed`, `SonarCloud: Quality
 Gate passed (0 new issues)`. If either was rate limited, skipped, or never reported, say so instead of
 letting a green checkmark imply it reviewed.
+
+**Timestamp a clean result and say it may not hold.** Late findings are normal (step 2), and the user
+may merge on the strength of your report. Write "no findings as of HH:MM — CodeRabbit sometimes posts
+more after this point", never a bare "the PR is clean". If findings arrive after they have merged,
+that is a follow-up PR, not a push to the merged branch.
 
 Then state plainly: **PR N is ready for your review and merge** — with the URL, and with the check
 status as you actually observed it. Stop there.
