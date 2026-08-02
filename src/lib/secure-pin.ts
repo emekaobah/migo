@@ -58,6 +58,25 @@ export async function isPinSet(): Promise<boolean> {
   return (await SecureStore.getItemAsync(KEYS.hash)) !== null;
 }
 
+/**
+ * Serialises `verifyPin`.
+ *
+ * The counter is read, a hash is awaited, then the counter is written. Two
+ * concurrent calls both read the same value before either writes, one
+ * increment is lost, and the five-attempt lockout under-counts — which is the
+ * one thing this module exists to enforce. Callers cannot be relied on to
+ * serialise, so the lock lives here.
+ */
+let verifyQueue: Promise<unknown> = Promise.resolve();
+
+function serialise<T>(work: () => Promise<T>): Promise<T> {
+  // Chain onto the tail whether or not the previous call succeeded, so one
+  // rejection cannot wedge the queue for the rest of the session.
+  const next = verifyQueue.then(work, work);
+  verifyQueue = next.catch(() => undefined);
+  return next;
+}
+
 export type VerifyResult =
   | { ok: true }
   | { ok: false; reason: 'wrong'; attemptsLeft: number }
@@ -70,7 +89,11 @@ export type VerifyResult =
  * The counter is checked *before* the comparison, so a locked-out device does
  * not keep testing candidates — and it is only cleared on success.
  */
-export async function verifyPin(pin: string): Promise<VerifyResult> {
+export function verifyPin(pin: string): Promise<VerifyResult> {
+  return serialise(() => verifyPinUnlocked(pin));
+}
+
+async function verifyPinUnlocked(pin: string): Promise<VerifyResult> {
   const [hash, salt] = await Promise.all([
     SecureStore.getItemAsync(KEYS.hash),
     SecureStore.getItemAsync(KEYS.salt),

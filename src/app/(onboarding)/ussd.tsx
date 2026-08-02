@@ -18,15 +18,23 @@ export default function UssdScreen() {
   const [code, setCode] = useState('— — — — — —');
   const [validMinutes, setValidMinutes] = useState(10);
   const [dialerUnavailable, setDialerUnavailable] = useState(false);
+  const [codeError, setCodeError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     let active = true;
-    void api.ussdCode().then((result) => {
-      if (!active) return;
-      setCode(result.code);
-      setValidMinutes(result.validMinutes);
-    });
+    api
+      .ussdCode()
+      .then((result) => {
+        if (!active) return;
+        setCode(result.code);
+        setValidMinutes(result.validMinutes);
+      })
+      // The dialler instructions are still useful without a code, so keep the
+      // screen up and say the code could not be fetched.
+      .catch(() => {
+        if (active) setCodeError(true);
+      });
     return () => {
       active = false;
     };
@@ -56,6 +64,12 @@ export default function UssdScreen() {
             Valid for {validMinutes} minutes. Migo will never ask you to read this to an agent.
           </Text>
         </View>
+
+        {codeError ? (
+          <Text style={styles.note}>
+            We could not fetch your code. Dial {ENROL_CODE} and it will be shown there.
+          </Text>
+        ) : null}
 
         {dialerUnavailable ? (
           <Text style={styles.note}>This device can&apos;t dial. Enter {ENROL_CODE} on your phone.</Text>

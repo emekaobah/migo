@@ -114,6 +114,37 @@ describe('verifyPin', () => {
   });
 });
 
+describe('concurrent verification', () => {
+  it('counts every failed attempt when calls overlap', async () => {
+    await setPin('123456');
+
+    // Fired together rather than awaited in turn. Without serialisation these
+    // all read attempts=0 before any of them writes, increments are lost, and
+    // the lockout under-counts — which is the one thing this module enforces.
+    await Promise.all(Array.from({ length: MAX_ATTEMPTS }, () => verifyPin('000000')));
+
+    expect(await getAttempts()).toBe(MAX_ATTEMPTS);
+    expect(await isLockedOut()).toBe(true);
+  });
+
+  it('locks out under a burst of parallel guesses', async () => {
+    await setPin('123456');
+
+    await Promise.all(Array.from({ length: 12 }, () => verifyPin('000000')));
+
+    // Never past the ceiling, and never short of it.
+    expect(await getAttempts()).toBe(MAX_ATTEMPTS);
+    await expect(verifyPin('123456')).resolves.toEqual({ ok: false, reason: 'locked' });
+  });
+
+  it('keeps working after a rejected call, rather than wedging the queue', async () => {
+    await setPin('123456');
+
+    await expect(verifyPin('abc')).resolves.toBeDefined();
+    await expect(verifyPin('123456')).resolves.toEqual({ ok: true });
+  });
+});
+
 describe('clearPin', () => {
   it('removes every trace, including the counter', async () => {
     await setPin('123456');

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
@@ -29,24 +29,37 @@ export default function BindScreen() {
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const [bioEnrolled, setBioEnrolled] = useState(false);
   const [unavailable, setUnavailable] = useState<string | undefined>();
-  const [pin, setPinDigits] = useState('');
+  // Named to match its setter: `setPin` is the imported secure-pin function.
+  const [pinDigits, setPinDigits] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Synchronous guard. `busy` state cannot protect the first double-tap,
+  // because the second press lands before React has re-rendered — and Button
+  // has no `disabled` prop by design, so nothing else stops it.
+  const running = useRef(false);
   const router = useRouter();
   const auth = useAuth();
 
   useEffect(() => {
     let active = true;
-    void capability().then((cap) => {
-      if (!active || cap.available) return;
-      setUnavailable(UNAVAILABLE[cap.reason]);
-    });
+    capability()
+      .then((cap) => {
+        if (!active || cap.available) return;
+        setUnavailable(UNAVAILABLE[cap.reason]);
+      })
+      // A failed capability probe must not take the screen down. Treat it the
+      // same as no sensor: the PIN path is complete on its own.
+      .catch(() => {
+        if (active) setUnavailable('Biometric check failed on this phone.');
+      });
     return () => {
       active = false;
     };
   }, []);
 
   const enrolBiometric = async () => {
+    // `authenticate` never throws — it resolves false on any failure, because
+    // every caller has the PIN path to fall back to.
     const ok = await authenticate(`Confirm your ${biometric.noun} to sign in to Migo`);
     if (ok) {
       success();
@@ -59,22 +72,27 @@ export default function BindScreen() {
   };
 
   const append = (digit: string) => {
-    if (pin.length >= PIN_LENGTH) return;
+    if (pinDigits.length >= PIN_LENGTH) return;
     tick();
     setError(null);
     setPinDigits((current) => current + digit);
   };
 
   const finish = async () => {
-    if (pin.length < PIN_LENGTH) {
+    // Both writes below are non-idempotent, so a double-tap must not start a
+    // second run.
+    if (running.current) return;
+
+    if (pinDigits.length < PIN_LENGTH) {
       errorHaptic();
       setError(`Your PIN needs all ${PIN_LENGTH} digits.`);
       return;
     }
 
+    running.current = true;
     setBusy(true);
     try {
-      await setPin(pin);
+      await setPin(pinDigits);
       await api.bindDevice('device-public-key');
 
       auth.markEnrolled(phone ?? BORROWER.phone, BORROWER.name);
@@ -87,6 +105,12 @@ export default function BindScreen() {
       // The PIN buffer never outlives this screen.
       setPinDigits('');
       router.replace('/(session)/loading');
+    } catch {
+      // Say so. Silently returning the button to its resting state would leave
+      // the borrower believing they had finished setting up when they had not.
+      errorHaptic();
+      setError('We could not finish setting up. Check your connection and try again.');
+      running.current = false;
     } finally {
       setBusy(false);
     }
@@ -108,7 +132,7 @@ export default function BindScreen() {
         <View style={styles.pinBlock}>
           <Text style={type.bodyLarge}>Set a 6-digit backup PIN</Text>
           <Text style={styles.hint}>Kept on this phone only. Never sent to Migo.</Text>
-          <PinDots filled={pin.length} />
+          <PinDots filled={pinDigits.length} />
         </View>
 
         <Keypad
@@ -116,6 +140,9 @@ export default function BindScreen() {
           onDigit={append}
           onBackspace={() => {
             tick();
+            // Clear the error too, matching `append` and `enrol` — otherwise a
+            // stale "needs all 6 digits" sits under a PIN being corrected.
+            setError(null);
             setPinDigits((current) => current.slice(0, -1));
           }}
         />

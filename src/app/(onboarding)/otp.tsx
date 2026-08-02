@@ -53,7 +53,9 @@ export default function OtpScreen() {
       setReceived(true);
     });
     void retriever.start();
-    void api.requestCode(phone ?? '');
+    // Best-effort: the code may still arrive, and the USSD route below works
+    // regardless, so a failure here must not block the screen.
+    api.requestCode(phone ?? '').catch(() => undefined);
 
     return () => {
       unsubscribe();
@@ -91,13 +93,20 @@ export default function OtpScreen() {
   };
 
   const verify = async (candidate: string) => {
-    const { ok } = await api.verifyCode(candidate);
-    if (ok) {
-      advance();
-      return;
+    try {
+      const { ok } = await api.verifyCode(candidate);
+      if (ok) {
+        advance();
+        return;
+      }
+      errorHaptic();
+      setError('That code is not right. Check it and try again.');
+    } catch {
+      // A rejected request is not a wrong code, and telling the borrower it is
+      // would send them hunting for a mistake they did not make.
+      errorHaptic();
+      setError('We could not check that code. Try again, or use *561#.');
     }
-    errorHaptic();
-    setError('That code is not right. Check it and try again.');
     setCode('');
   };
 
