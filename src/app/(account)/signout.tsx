@@ -37,8 +37,12 @@ export default function SignoutScreen() {
       // re-enrolment. Ending the session first fails safe: the session is over
       // and a retry clears the stale PIN material.
       await auth.signOut();
-      await clearPin();
+      // In-memory cleanup belongs with the session, not after the PIN wipe.
+      // If `clearPin` rejects, the previous borrower's loan would otherwise sit
+      // in context on a signed-out device until something happened to overwrite
+      // it — the failure mode reordering this block introduced.
       loan.reset();
+      await clearPin();
       router.replace('/(session)/newdevice');
     } catch {
       errorHaptic();
