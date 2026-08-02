@@ -14,7 +14,14 @@ Run the CodeRabbit review loop for this repo. Argument: $ARGUMENTS
 
 - **NEVER merge the PR.** Not with `gh pr merge`, not by pushing to `main`, not by enabling auto-merge. The user merges. If asked mid-loop to merge, decline and say the loop is explicitly hands-off on merging.
 - **NEVER force-push** to the PR branch — CodeRabbit's incremental reviews rely on the commit history.
-- Never `git push` to `main` directly. (`main` is also branch-protected server-side, but do not rely on that.)
+- Never `git push` to `main` directly.
+
+`.claude/settings.json` denies `gh pr merge`, `git merge`, and common force-push and push-to-main
+spellings. Those are **defense in depth only** — Bash permission patterns match command strings and
+are trivially evaded by reordering flags (`git push origin feature --force`) or by a refspec
+(`git push origin HEAD:main`). The real enforcement is server-side branch protection on `main`
+(PR required, force-push and deletion blocked, applies to admins). Treat the rules above as binding
+on you regardless of whether a given spelling happens to be caught.
 
 ## 1. Get to a PR
 
@@ -44,34 +51,31 @@ Confirm it is `OPEN`. Record `N` and the head SHA. **Do not** create a branch, c
 
 ## 2. Wait for CodeRabbit — scoped to THIS round
 
-CodeRabbit signals completion by editing its summary comment to contain `Actionable comments posted:`.
-That string **persists across rounds**, so on round 2 a bare existence check returns instantly and you
-would scrape round 1's stale findings. Always anchor the wait to time.
-
-Use **REST issue comments** for this, not `gh pr view --json comments` — the GraphQL shape has only
-`createdAt`, no update timestamp, and CodeRabbit *edits* one comment in place rather than posting a
-new one. Its fields are `author, authorAssociation, body, createdAt, id, includesCreatedEdit,
-isMinimized, minimizedReason, reactionGroups, url, viewerDidAuthor` — verified, no `updatedAt`.
-
-**Before pushing (or before starting round 1), capture the baseline:**
+**Poll the check run, not the comment text.** Do not grep the summary comment for phrases like
+"Actionable comments posted" — that string does not appear in current CodeRabbit summaries, and any
+such marker persists across rounds anyway, so round 2 would match round 1 instantly and you would
+scrape stale findings. The check run carries an explicit state:
 
 ```shell
-BASELINE=$(gh api repos/{owner}/{repo}/issues/N/comments --paginate \
-  --jq '[.[] | select(.user.login=="coderabbitai[bot]") | .updated_at] | max // "1970-01-01T00:00:00Z"')
+gh pr checks N --json name,state,description \
+  | jq -r '.[] | select(.name=="CodeRabbit") | "\(.state) — \(.description)"'
 ```
 
-**Then poll until the summary is newer than that baseline:**
+Observed values: `SUCCESS — Review completed`, `PENDING — Review in progress`, `PENDING — Review
+queued`, and `SUCCESS — Review rate limited`.
+
+**`SUCCESS — Review rate limited` is not a clean review.** It means the free tier throttled a
+re-review after consecutive pushes; findings may be missing entirely. Treat it as "review did not
+run", say so in the report, and do not present the PR as reviewed.
+
+**Before pushing, capture a timestamp** so round 2's findings can be told from round 1's:
 
 ```shell
-gh api repos/{owner}/{repo}/issues/N/comments --paginate \
-  --jq --arg since "$BASELINE" '[.[]
-    | select(.user.login=="coderabbitai[bot]")
-    | select(.updated_at > $since)
-    | select(.body | test("Actionable comments posted"))] | length'
+SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 ```
 
-If the baseline comes back as the epoch on a round where CodeRabbit has already commented, the filter
-is wrong — check the login shape and the endpoint before trusting a "review complete" signal.
+Wait for the state to leave `PENDING` and land on `Review completed`, polling every ~45s and giving up
+after ~10 minutes. If it never completes, report that and stop. Do not guess at findings.
 
 Poll roughly every 45s, giving up after ~10 minutes. If it never appears:
 
@@ -85,27 +89,47 @@ Poll roughly every 45s, giving up after ~10 minutes. If it never appears:
 `coderabbitai`; REST (`gh api .../comments`) reports `coderabbitai[bot]`. Use the right one per call —
 a mismatch returns zero results and reads exactly like "no findings".
 
-Three separate surfaces — read all of them:
+**Start from review threads, via GraphQL.** REST does not expose whether a thread is resolved, so a
+REST-only sweep re-litigates findings you already fixed. This is the authoritative list:
 
 ```shell
-# inline review comments — the actionable ones. Skip resolved/outdated threads.
-gh api repos/{owner}/{repo}/pulls/N/comments --paginate \
-  --jq '.[] | select(.user.login=="coderabbitai[bot]") | select(.in_reply_to_id == null)
-        | {id, path, line: (.line // .original_line), outdated: (.position == null), body}'
+gh api graphql -f owner={owner} -f repo={repo} -F number=N -f query='
+query($owner:String!,$repo:String!,$number:Int!){
+  repository(owner:$owner,name:$repo){
+    pullRequest(number:$number){
+      reviewThreads(first:100){
+        nodes{ id isResolved isOutdated
+          comments(first:1){ nodes{ databaseId author{login} path line body } } } } } } }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+        | select(.comments.nodes[0].author.login=="coderabbitai")
+        | select(.isResolved | not)
+        | {thread:.id, outdated:.isOutdated, id:.comments.nodes[0].databaseId,
+           path:.comments.nodes[0].path, body:.comments.nodes[0].body}'
+```
 
+`isResolved: true` means it is already handled — CodeRabbit resolves its own threads when a push
+addresses them. `isOutdated: true` means the diff moved underneath it; treat as stale **unless the
+claim still holds against current code**, and say which you dropped on that basis.
+
+Then the two surfaces threads don't cover:
+
+```shell
 # review bodies
 gh api repos/{owner}/{repo}/pulls/N/reviews --paginate \
   --jq '.[] | select(.user.login=="coderabbitai[bot]") | {id, state, body}'
 
 # summary comment — walkthrough + collapsed sections
-gh pr view N --json comments --jq '.comments[] | select(.author.login=="coderabbitai") | .body'
+gh api repos/{owner}/{repo}/issues/N/comments --paginate \
+  --jq '.[] | select(.user.login=="coderabbitai[bot]") | .body'
 ```
 
 Fetch a single comment by id with `gh api repos/{owner}/{repo}/pulls/comments/<id>` — **not**
 `pulls/N/comments/<id>`, which 404s.
 
-On round 2, ignore findings already replied to or resolved in round 1; treat `outdated: true` (the diff
-moved under it) as stale unless the claim still holds against current code.
+**Verify every `gh`/`jq` recipe by running it before trusting its output.** `gh api --jq` takes exactly
+one filter and rejects `--arg` (`accepts 1 arg(s), received 3`); pipe to real `jq` and use `--slurp`
+when `--paginate` is in play. A malformed filter returns empty, which is indistinguishable from
+"no findings" — an empty result is a reason to check the query, not to declare the PR clean.
 
 The summary comment carries the collapsed **nitpick** and **outside diff range** sections — expand and
 include those; they are often where the real bugs hide.
@@ -140,9 +164,15 @@ blind-apply its "committable suggestion" blocks.
   either way; if you skipped a check, say which.
 - Capture the CodeRabbit baseline timestamp (step 2) **before** pushing.
 - `git push` (no force). CodeRabbit will re-review the new commits automatically.
-- Optionally reply to each addressed thread so it resolves:
+- Optionally reply to each addressed thread. **A reply does not resolve anything** — the REST replies
+  endpoint only appends a comment. In practice CodeRabbit resolves its own threads once a push
+  addresses them, so prefer letting it do that and re-reading `isResolved` in step 3. To resolve
+  explicitly, use the GraphQL mutation with the thread node id from step 3:
   ```shell
   gh api repos/{owner}/{repo}/pulls/N/comments/<comment_id>/replies -f body='Fixed in <sha>.'
+
+  gh api graphql -f threadId='PRRT_...' -f query='
+    mutation($threadId:ID!){ resolveReviewThread(input:{threadId:$threadId}){ thread{ isResolved } } }'
   ```
 
 ## 6. Report back and stop
