@@ -51,37 +51,56 @@ Confirm it is `OPEN`. Record `N` and the head SHA. **Do not** create a branch, c
 
 ## 2. Wait for CodeRabbit — scoped to THIS round
 
-**Poll the check run, not the comment text.** Do not grep the summary comment for phrases like
-"Actionable comments posted" — that string does not appear in current CodeRabbit summaries, and any
-such marker persists across rounds anyway, so round 2 would match round 1 instantly and you would
-scrape stale findings. The check run carries an explicit state:
+Do not grep the summary comment for phrases like "Actionable comments posted" — that string does not
+appear in current CodeRabbit summaries, and any such marker persists across rounds anyway, so round 2
+would match round 1 instantly and you would scrape stale findings.
+
+### Check these three things before believing any result
+
+**1. The PR is still open.** A closed or merged PR runs nothing, and pushes to its branch are ignored.
+This is the cheapest possible mistake to make and it looks exactly like an infinite queue:
 
 ```shell
-gh pr checks N --json name,state,description \
-  | jq -r '.[] | select(.name=="CodeRabbit") | "\(.state) — \(.description)"'
+gh pr view N --json state,mergedAt --jq '.state + " mergedAt=" + (.mergedAt // "null")'
 ```
 
-Observed values: `SUCCESS — Review completed`, `PENDING — Review in progress`, `PENDING — Review
-queued`, and `SUCCESS — Review rate limited`.
+(`gh pr view --json` has no `merged` field — it is `mergedAt`. `OPEN` is the only state worth
+continuing on.)
 
-**`SUCCESS — Review rate limited` is not a clean review.** It means the free tier throttled a
-re-review after consecutive pushes; findings may be missing entirely. Treat it as "review did not
-run", say so in the report, and do not present the PR as reviewed.
-
-**Before pushing, capture a timestamp** so round 2's findings can be told from round 1's:
+**2. The PR head equals the SHA you pushed.** GitHub can lag, and a squash-merge freezes the head
+forever. Polling anything before this matches means reading the *previous* commit's result:
 
 ```shell
-SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+test "$(gh api repos/{owner}/{repo}/pulls/N --jq .head.sha)" = "$(git rev-parse HEAD)" \
+  && echo in-sync || echo "STALE — do not trust any status yet"
 ```
 
-Wait for the state to leave `PENDING` and land on `Review completed`, polling every ~45s and giving up
-after ~10 minutes. If it never completes, report that and stop. Do not guess at findings.
+**3. CodeRabbit publishes a commit *status*, not a check run.** `commits/{sha}/check-runs` never
+lists it and returns empty forever — indistinguishable from a review that hasn't started. Use the
+statuses endpoint, scoped to the SHA you actually pushed:
 
-Poll roughly every 45s, giving up after ~10 minutes. If it never appears:
+```shell
+gh api repos/{owner}/{repo}/commits/$(git rev-parse HEAD)/status \
+  --jq '[.statuses[] | select(.context=="CodeRabbit")]
+        | if length==0 then "not-started" else .[0].state + " / " + .[0].description end'
+```
 
-- check the App is installed (`gh pr checks N` should list a CodeRabbit entry),
-- check whether the check says **rate limited** — on the free tier consecutive pushes get throttled, and that is not the same as "no findings",
-- report that CodeRabbit did not complete a review and stop. Do not guess at findings.
+An overall `state: pending` with **zero contexts** is not a queued review — it is GitHub's default for
+a commit nothing has reported on. Distinguish "nothing has started" from "something is running".
+
+Observed values: `success / Review completed`, `pending / Review in progress`, `pending / Review
+queued`, `success / Review rate limited`.
+
+**`success / Review rate limited` is not a clean review.** The free tier throttles re-reviews after
+consecutive pushes; findings may be missing entirely. Treat it as "review did not run", say so in the
+report, and do not present the PR as reviewed.
+
+`gh pr checks N` is fine for a quick human-readable glance, but it reports against the PR's recorded
+head — which is why it can hand back a stale `SUCCESS` seconds after a push. Never use it as the
+completion signal.
+
+Poll every ~45s, giving up after ~10 minutes. If it never completes, re-check the three conditions
+above, then report that CodeRabbit did not review and stop. Do not guess at findings.
 
 ## 3. Collect every finding
 
@@ -93,11 +112,12 @@ a mismatch returns zero results and reads exactly like "no findings".
 REST-only sweep re-litigates findings you already fixed. This is the authoritative list:
 
 ```shell
-gh api graphql -f owner={owner} -f repo={repo} -F number=N -f query='
-query($owner:String!,$repo:String!,$number:Int!){
+gh api graphql --paginate -f owner={owner} -f repo={repo} -F number=N -f query='
+query($owner:String!,$repo:String!,$number:Int!,$endCursor:String){
   repository(owner:$owner,name:$repo){
     pullRequest(number:$number){
-      reviewThreads(first:100){
+      reviewThreads(first:100, after:$endCursor){
+        pageInfo{ hasNextPage endCursor }
         nodes{ id isResolved isOutdated
           comments(first:1){ nodes{ databaseId author{login} path line body } } } } } } }' \
   --jq '.data.repository.pullRequest.reviewThreads.nodes[]
@@ -106,6 +126,10 @@ query($owner:String!,$repo:String!,$number:Int!){
         | {thread:.id, outdated:.isOutdated, id:.comments.nodes[0].databaseId,
            path:.comments.nodes[0].path, body:.comments.nodes[0].body}'
 ```
+
+`--paginate` needs all three pieces to work: the `$endCursor:String` variable, `after:$endCursor`, and
+the `pageInfo{ hasNextPage endCursor }` selection. Drop any one and it silently returns only the first
+100 threads — which looks exactly like a shorter review.
 
 `isResolved: true` means it is already handled — CodeRabbit resolves its own threads when a push
 addresses them. `isOutdated: true` means the diff moved underneath it; treat as stale **unless the
