@@ -36,7 +36,33 @@ Confirm it is `OPEN`. Record `N` and the head SHA. **Do not** create a branch, c
 
 ### New PR
 
-- If on `main`, create a branch first (`git switch -c <kebab-name>`), then commit outstanding work.
+- **Sync with the remote before branching. Always, and from `origin/main` — never from local `main`.**
+  Local `main` goes stale the moment the user merges a PR from the GitHub UI, and branching off it
+  bases the work on a commit missing everything merged since. The branch still pushes and the PR still
+  opens; the diff is just silently wrong.
+  ```shell
+  git fetch origin
+  git switch -c <kebab-name> origin/main
+  ```
+  `origin/main` is the freshly-fetched remote-tracking ref, so this is correct even when local `main`
+  is behind — and it does not require the local branch to be checked out or updated at all.
+
+  To bring local `main` forward anyway, use the refspec form rather than `git merge --ff-only`:
+  ```shell
+  git fetch origin main:main
+  ```
+  It needs no checkout, refuses anything that is not a fast-forward, and `git merge` is denied by
+  `.claude/settings.json` — deliberately, since merging is the user's job.
+
+  Confirm the base before committing anything:
+  ```shell
+  test "$(git merge-base HEAD origin/main)" = "$(git rev-parse origin/main)" \
+    && echo "based on current main" || echo "STALE BASE — rebase before continuing"
+  ```
+  If work is already committed on a stale base, `git rebase --onto origin/main <old-base>` rather than
+  opening a PR whose diff includes unrelated reverts.
+- If there is uncommitted work on `main` itself, branch first (`git switch -c <kebab-name>`), then
+  commit — but rebase onto `origin/main` before pushing.
 - **Conventional Commits are enforced here** — commitlint runs on `commit-msg`, and
   `.github/workflows/pr-title.yml` fails the PR if the title doesn't conform. Both forms are valid:
   `type: subject` or `type(scope): subject`. The subject must start lowercase and must not end in a
