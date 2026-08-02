@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
@@ -49,6 +50,12 @@ export function Screen({
 
   return (
     <SafeAreaView style={[styles.flex, background]} edges={edges}>
+      {/*
+        Each screen owns its status bar, because the surfaces alternate: navy
+        and ink need light content, `surface` and `card` need dark. Setting it
+        once globally leaves the clock illegible on every light screen.
+      */}
+      <StatusBar style={isDarkSurface(surface) ? 'light' : 'dark'} />
       {scroll ? (
         <ScrollView
           style={styles.flex}
