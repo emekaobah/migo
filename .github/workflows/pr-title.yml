@@ -1,0 +1,58 @@
+name: PR title
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            style
+            docs
+            test
+            build
+            ci
+            chore
+            revert
+          # Keep in sync with commitlint.config.mjs — scopes follow design/PLAN.md §2.
+          scopes: |
+            theme
+            ui
+            lib
+            state
+            api
+            data
+            enrolment
+            session
+            loans
+            repayment
+            support
+            account
+            app
+            dev
+            native
+            build
+            config
+            deps
+            test
+            e2e
+            ci
+          requireScope: false
+          subjectPattern: ^(?![A-Z])(?!.*\.$).+$
+          subjectPatternError: |
+            The subject "{subject}" in "{title}" is invalid: start lowercase and
+            do not end with a period. e.g. "feat(loans): add tenor selection"

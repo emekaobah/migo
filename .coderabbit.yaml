@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+early_access: false
+
+reviews:
+  profile: chill # "assertive" for more nitpicks
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  path_filters:
+    - "!**/pnpm-lock.yaml"
+    - "!ios/**"
+    - "!android/**"
+    - "!**/*.lock"
+    - "!assets/**"
+
+  path_instructions:
+    - path: "src/**/*.{ts,tsx}"
+      instructions: >-
+        Expo SDK 57 / React Native app using Expo Router. Flag any use of
+        web-only DOM APIs in shared code, missing platform guards, and
+        deprecated Expo APIs. Prefer function components with hooks.
+    - path: "**/*.tsx"
+      instructions: >-
+        Check accessibility props on touchables, and that styles avoid
+        hardcoded colors where a theme token exists.
+
+chat:
+  auto_reply: true
