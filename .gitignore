@@ -31,10 +31,24 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
+
+# client design material — kept out of the public repo
+design/
+
+# local agent config
+.claude/settings.local.json
+
+# signing material
+*.keystore
+keystore.properties
+google-services.json
+GoogleService-Info.plist
 
 example
 
