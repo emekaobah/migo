@@ -38,6 +38,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# test coverage
+coverage/
+.scannerwork/
+
 # client design material — kept out of the public repo
 design/
 

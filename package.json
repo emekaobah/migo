@@ -47,7 +47,8 @@
     "typecheck": "tsc --noEmit",
     "prepare": "husky || true",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "private": true,
   "jest": {
@@ -60,12 +61,19 @@
       "**/?(*.)+(test).ts?(x)"
     ],
     "collectCoverageFrom": [
-      "src/lib/**/*.ts",
-      "src/features/**/*.ts",
-      "src/api/**/*.ts"
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/__tests__/**",
+      "!src/app/(dev)/**",
+      "!src/theme/**"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!(.pnpm|(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))"
-    ]
+    ],
+    "coverageReporters": [
+      "text-summary",
+      "lcov"
+    ],
+    "coverageDirectory": "coverage"
   }
 }
