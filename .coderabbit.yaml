@@ -4,7 +4,20 @@ early_access: false
 
 reviews:
   profile: chill # "assertive" for more nitpicks
-  request_changes_workflow: false
+
+  # CodeRabbit submits a *Request changes* review, so its check stays red until
+  # findings are resolved.
+  #
+  # This was false, and PR #9 showed why that was the wrong default: two
+  # Critical findings — a TOCTOU race that weakened the PIN lockout, and an
+  # unguarded double-tap that could bind a device twice — sat under "All checks
+  # have passed". With the workflow off, the check reports only whether the
+  # review *ran*, never what it found, so the green tick carried no information
+  # about severity. On a lending app that is the wrong trade.
+  #
+  # Merging is still the user's call: branch protection requires a PR but no
+  # approvals, so a red CodeRabbit is a visible objection rather than a block.
+  request_changes_workflow: true
   high_level_summary: true
   poem: false
   review_status: true
