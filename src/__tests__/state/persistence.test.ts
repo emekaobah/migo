@@ -57,6 +57,31 @@ describe('load', () => {
     expect(JSON.parse(secureStoreMock.peek(KEY)!)).not.toHaveProperty('paidCount');
   });
 
+  it('falls back to EMPTY for a field of the wrong type', async () => {
+    // Well-formed JSON, wrong shapes. `"false"` is the dangerous one: it is a
+    // truthy string, and `bootRedirect` reads `enrolled` to decide whether
+    // someone is sent through enrolment at all — so a bad record would skip it.
+    secureStoreMock.seed(
+      KEY,
+      JSON.stringify({ enrolled: 'false', deviceBound: 1, phone: 7, name: { first: 'Tunde' } }),
+    );
+
+    await expect(load()).resolves.toEqual(EMPTY);
+  });
+
+  it('keeps the valid fields when only some are malformed', async () => {
+    secureStoreMock.seed(KEY, JSON.stringify({ enrolled: true, phone: 7 }));
+
+    await expect(load()).resolves.toEqual({ ...EMPTY, enrolled: true });
+  });
+
+  it('starts fresh on valid JSON that is not an object', async () => {
+    for (const raw of ['42', '"enrolled"', '[]', 'null']) {
+      secureStoreMock.seed(KEY, raw);
+      await expect(load()).resolves.toEqual(EMPTY);
+    }
+  });
+
   it('starts fresh rather than throwing on a corrupt record', async () => {
     // A crash loop on boot is unrecoverable for a borrower; a fresh start is not.
     secureStoreMock.seed(KEY, '{ not json');

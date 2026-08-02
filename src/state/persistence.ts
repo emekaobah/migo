@@ -41,24 +41,46 @@ export const EMPTY: DurableState = {
   name: null,
 };
 
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || typeof value === 'string';
+
+/**
+ * Rebuilds the durable slice field by field, checking each value's type.
+ *
+ * Storage outlives the code that wrote it, so a record can be well-formed JSON
+ * and still hold the wrong shape — a field whose type changed between builds is
+ * the realistic case. Casting parsed JSON to `DurableState` stops the compiler
+ * asking, which is not the same as the value being right: a stored
+ * `enrolled: "false"` is a truthy string, and `bootRedirect` reads `enrolled`
+ * to decide whether someone has to enrol at all.
+ *
+ * Listing every field by hand is deliberate. It drops unknown keys by
+ * construction — a field removed from `DurableState` cannot survive in storage
+ * and reappear in state — and adding a field to `DurableState` makes this
+ * function a type error until it is handled here.
+ */
+function validated(record: Record<string, unknown>): DurableState {
+  return {
+    enrolled: isBoolean(record.enrolled) ? record.enrolled : EMPTY.enrolled,
+    deviceBound: isBoolean(record.deviceBound) ? record.deviceBound : EMPTY.deviceBound,
+    bio: isBoolean(record.bio) ? record.bio : EMPTY.bio,
+    pinSet: isBoolean(record.pinSet) ? record.pinSet : EMPTY.pinSet,
+    phone: isNullableString(record.phone) ? record.phone : EMPTY.phone,
+    name: isNullableString(record.name) ? record.name : EMPTY.name,
+  };
+}
+
 export async function load(): Promise<DurableState> {
   try {
     const raw = await SecureStore.getItemAsync(KEY);
     if (!raw) return EMPTY;
 
-    // Take only the keys the current shape declares, then fill the rest from
-    // EMPTY. This widens a record written by an *older* build, as before — and
-    // it also narrows one written by a *newer* build, or by a build whose
-    // fields have since been dropped. Spreading the parsed record wholesale did
-    // only the first: fields removed from `DurableState` still arrived from
-    // storage, flowed into React state, and were written straight back on the
-    // next save, where they would sit for the life of the install.
-    const stored = JSON.parse(raw) as Record<string, unknown>;
-    const known = Object.fromEntries(
-      Object.keys(EMPTY).filter((key) => stored[key] !== undefined).map((key) => [key, stored[key]]),
-    ) as Partial<DurableState>;
+    const parsed: unknown = JSON.parse(raw);
+    // Valid JSON is not necessarily an object — `"42"` and `"[]"` both parse.
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return EMPTY;
 
-    return { ...EMPTY, ...known };
+    return validated(parsed as Record<string, unknown>);
   } catch {
     // Corrupt or unreadable state must not brick the app — a fresh start is
     // recoverable, a crash loop on boot is not.
