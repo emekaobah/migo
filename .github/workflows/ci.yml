@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs — consecutive pushes also throttle CodeRabbit, so there
+# is no value in keeping stale jobs alive.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sonar needs full history to attribute issues to the right commit.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --ignore-scripts: a dependency's postinstall should not execute in CI.
+      # Nothing here needs them — the only lifecycle script in this repo is
+      # `prepare` (husky), which installs git hooks that CI has no use for.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      # Coverage is printed here for visibility, not uploaded anywhere.
+      # SonarCloud runs Automatic Analysis, which cannot import a coverage
+      # report — and that is a deliberate trade: Automatic Analysis needs no
+      # token and always runs, including on PRs that cannot see secrets.
+      # PLAN §6b targets specific high-value tests rather than a percentage.
+      - name: Test with coverage
+        run: pnpm test:coverage

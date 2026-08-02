@@ -2,6 +2,7 @@
   "name": "migo",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.12.1",
   "dependencies": {
     "expo": "~57.0.9",
     "expo-clipboard": "~57.0.1",
@@ -29,10 +30,14 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.1",
     "husky": "^9.1.7",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.3",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -41,7 +46,35 @@
     "ios": "expo run:ios",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/__tests__/setup.ts"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts?(x)",
+      "**/?(*.)+(test).ts?(x)"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/__tests__/**",
+      "!src/app/(dev)/**",
+      "!src/theme/**"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(.pnpm|(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))"
+    ],
+    "coverageReporters": [
+      "text-summary",
+      "lcov"
+    ],
+    "coverageDirectory": "coverage"
+  }
 }
