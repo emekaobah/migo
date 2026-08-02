@@ -15,12 +15,14 @@ pnpm typecheck && pnpm lint && pnpm test   # should be green before you start
 
 ### Android needs JDK 17 — not Android Studio's bundled JDK
 
-Expo SDK 57 / React Native 0.86 build against **JDK 17**. Android Studio ships a
-newer JBR (25 at the time of writing), and if that is the JDK Gradle picks up,
-the build fails part-way through the native compile with a message that does not
-mention Java at all:
+**React Native 0.86** builds Android against **JDK 17** — see
+[Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment).
+This is a React Native requirement, not an Expo one — the Expo SDK 57 docs do
+not specify a JDK version. Android Studio ships a newer JBR (25 at the time of
+writing), and if that is the JDK Gradle picks up, the build fails part-way
+through the native compile with a message that does not mention Java at all:
 
-```
+```text
 Execution failed for task ':react-native-worklets:configureCMakeDebug[arm64-v8a]'.
 > WARNING: A restricted method in java.lang.System has been called
 ```
