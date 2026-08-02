@@ -55,7 +55,17 @@ Do not grep the summary comment for phrases like "Actionable comments posted" �
 appear in current CodeRabbit summaries, and any such marker persists across rounds anyway, so round 2
 would match round 1 instantly and you would scrape stale findings.
 
-### Check these three things before believing any result
+### Pin the SHA once, then check three things before believing any result
+
+**Capture the pushed SHA immediately after the push and never re-derive it.** `git rev-parse HEAD`
+inside the poll loop silently retargets if anything commits mid-wait, so you would poll one commit
+while believing you polled another:
+
+```shell
+EXPECTED_SHA=$(git rev-parse HEAD)
+```
+
+Use `$EXPECTED_SHA` for every check below — never a fresh `git rev-parse`.
 
 **1. The PR is still open.** A closed or merged PR runs nothing, and pushes to its branch are ignored.
 This is the cheapest possible mistake to make and it looks exactly like an infinite queue:
@@ -71,7 +81,7 @@ continuing on.)
 forever. Polling anything before this matches means reading the *previous* commit's result:
 
 ```shell
-test "$(gh api repos/{owner}/{repo}/pulls/N --jq .head.sha)" = "$(git rev-parse HEAD)" \
+test "$(gh api repos/{owner}/{repo}/pulls/N --jq .head.sha)" = "$EXPECTED_SHA" \
   && echo in-sync || echo "STALE — do not trust any status yet"
 ```
 
@@ -80,10 +90,15 @@ lists it and returns empty forever — indistinguishable from a review that hasn
 statuses endpoint, scoped to the SHA you actually pushed:
 
 ```shell
-gh api repos/{owner}/{repo}/commits/$(git rev-parse HEAD)/status \
+gh api repos/{owner}/{repo}/commits/$EXPECTED_SHA/status \
   --jq '[.statuses[] | select(.context=="CodeRabbit")]
         | if length==0 then "not-started" else .[0].state + " / " + .[0].description end'
 ```
+
+**Re-run checks 1 and 2 before accepting a terminal status.** A PR can be merged, or the branch pushed
+again, while you were waiting — in which case the `success` you just read describes a commit that is no
+longer the PR head. Accept a terminal status only when the PR is still `OPEN` *and* its head is still
+`$EXPECTED_SHA`; otherwise start over rather than reporting the stale result.
 
 An overall `state: pending` with **zero contexts** is not a queued review — it is GitHub's default for
 a commit nothing has reported on. Distinguish "nothing has started" from "something is running".
