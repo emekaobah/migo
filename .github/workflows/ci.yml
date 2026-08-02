@@ -37,14 +37,10 @@ jobs:
 
       - run: pnpm lint
 
+      # Coverage is printed here for visibility, not uploaded anywhere.
+      # SonarCloud runs Automatic Analysis, which cannot import a coverage
+      # report — and that is a deliberate trade: Automatic Analysis needs no
+      # token and always runs, including on PRs that cannot see secrets.
+      # PLAN §6b targets specific high-value tests rather than a percentage.
       - name: Test with coverage
         run: pnpm test:coverage
-
-      # Runs after the tests so coverage/lcov.info exists to be imported.
-      # Requires SONAR_TOKEN, and Automatic Analysis must be OFF in SonarCloud —
-      # the two analysis methods are mutually exclusive.
-      - name: SonarCloud scan
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
