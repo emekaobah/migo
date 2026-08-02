@@ -31,7 +31,10 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # --ignore-scripts: a dependency's postinstall should not execute in CI.
+      # Nothing here needs them — the only lifecycle script in this repo is
+      # `prepare` (husky), which installs git hooks that CI has no use for.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       - run: pnpm typecheck
 
