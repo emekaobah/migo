@@ -2,8 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { usePlatform } from '@/state/use-platform';
-import { color, control, duration, type } from '@/theme';
+import { buttonRadius, color, control, duration, type } from '@/theme';
 
 const STEP_PERCENT = 6;
 
@@ -29,7 +28,6 @@ export function HoldButton({
   holdingLabel = 'Keep holding…',
   testID,
 }: Props) {
-  const { buttonRadius } = usePlatform();
   const [progress, setProgress] = useState(0);
   const [holding, setHolding] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -87,7 +85,7 @@ export function HoldButton({
       accessibilityLabel={label}
       accessibilityHint="Press and hold to accept"
       accessibilityValue={{ min: 0, max: 100, now: progress }}
-      style={[styles.base, { borderRadius: buttonRadius }]}
+      style={styles.base}
     >
       <View style={[styles.fill, { width: `${progress}%` }]} />
       <Text style={styles.label}>{holding && progress < 100 ? holdingLabel : label}</Text>
@@ -98,6 +96,7 @@ export function HoldButton({
 const styles = StyleSheet.create({
   base: {
     height: control.button,
+    borderRadius: buttonRadius,
     backgroundColor: color.navy,
     justifyContent: 'center',
     alignItems: 'center',

@@ -9,17 +9,12 @@ import { authenticate, capability } from '@/lib/biometrics';
 import { error as errorHaptic, success, tick } from '@/lib/haptics';
 import { PIN_LENGTH, setPin } from '@/lib/secure-pin';
 import { useAuth } from '@/state/auth-context';
-import { usePlatform } from '@/state/use-platform';
-import { space, type } from '@/theme';
+import { biometric, space, type } from '@/theme';
 
-/**
- * Takes the noun rather than reading it at module scope: the wording is
- * platform-dependent and the demo overlay can switch platform at runtime.
- */
-const unavailableCopy = (reason: 'no-hardware' | 'not-enrolled', noun: string) =>
-  reason === 'no-hardware'
-    ? 'This phone has no fingerprint or face sensor.'
-    : `You haven't set up ${noun} on this phone yet.`;
+const UNAVAILABLE: Record<'no-hardware' | 'not-enrolled', string> = {
+  'no-hardware': 'This phone has no fingerprint or face sensor.',
+  'not-enrolled': `You haven't set up ${biometric.noun} on this phone yet.`,
+};
 
 /**
  * Screen 4 — device binding. Step 2 of 2.
@@ -43,14 +38,13 @@ export default function BindScreen() {
   const running = useRef(false);
   const router = useRouter();
   const auth = useAuth();
-  const { biometric } = usePlatform();
 
   useEffect(() => {
     let active = true;
     capability()
       .then((cap) => {
         if (!active || cap.available) return;
-        setUnavailable(unavailableCopy(cap.reason, biometric.noun));
+        setUnavailable(UNAVAILABLE[cap.reason]);
       })
       // A failed capability probe must not take the screen down. Treat it the
       // same as no sensor: the PIN path is complete on its own.
@@ -60,7 +54,7 @@ export default function BindScreen() {
     return () => {
       active = false;
     };
-  }, [biometric.noun]);
+  }, []);
 
   const enrolBiometric = async () => {
     // `authenticate` never throws — it resolves false on any failure, because

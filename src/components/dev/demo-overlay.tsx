@@ -6,7 +6,7 @@ import { seedScenario } from '@/features/session/scenarios';
 import { useAuth } from '@/state/auth-context';
 import { useDemo, type Journey } from '@/state/demo-context';
 import { useLoan } from '@/state/loan-context';
-import { color, control, onNavy, radius, space, type } from '@/theme';
+import { color, control, radius, space, type } from '@/theme';
 
 const JOURNEYS: { key: Journey; label: string }[] = [
   { key: 'first-run', label: 'First run' },
@@ -16,16 +16,19 @@ const JOURNEYS: { key: Journey; label: string }[] = [
 ];
 
 /**
- * The demo rail — the prototype's left rail, as a floating overlay.
+ * Journey jumps, as a floating overlay.
  *
  * A proposal has to be walkable in any order, and reinstalling between journeys
- * is not a walkthrough. Demo affordances are a feature here, not debt (PLAN §1)
- * — but this one is visibly a dev tool so nobody mistakes it for product.
+ * is not a walkthrough. It seeds state and navigates — nothing more. It does
+ * **not** change how the app looks or behaves per platform: that comes from the
+ * platform the build is installed on, and faking it in-app would make every
+ * screen a lie about the device it is running on.
  *
- * Renders nothing unless `__DEV__`.
+ * Visibly a dev tool, so nobody mistakes it for product. Renders nothing unless
+ * `__DEV__`.
  */
 export function DemoOverlay() {
-  const { enabled, platform, setPlatform, journey, setJourney } = useDemo();
+  const { enabled, journey, setJourney } = useDemo();
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const auth = useAuth();
@@ -82,23 +85,6 @@ export function DemoOverlay() {
         </Pressable>
       ))}
 
-      <Text style={styles.section}>Platform copy</Text>
-      <View style={styles.switchRow}>
-        {(['android', 'ios'] as const).map((option) => (
-          <Pressable
-            key={option}
-            onPress={() => setPlatform(option)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: platform === option }}
-            style={[styles.chip, platform === option && styles.chipActive]}
-          >
-            <Text style={[styles.chipLabel, platform === option && styles.chipLabelActive]}>
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
       <Pressable
         onPress={() => router.push('/(dev)/kitchen-sink')}
         accessibilityRole="button"
@@ -149,16 +135,4 @@ const styles = StyleSheet.create({
   row: { minHeight: control.tap, justifyContent: 'center' },
   rowLabel: { ...type.body, color: color.card },
   rowLabelActive: { color: color.amber, fontWeight: '700' },
-  switchRow: { flexDirection: 'row', gap: space.sm },
-  chip: {
-    flex: 1,
-    minHeight: control.tap,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: onNavy.keypad,
-  },
-  chipActive: { backgroundColor: color.amber },
-  chipLabel: { ...type.caption, color: color.card },
-  chipLabelActive: { color: color.navy, fontWeight: '700' },
 });

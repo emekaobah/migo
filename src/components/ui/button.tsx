@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
-import { usePlatform } from '@/state/use-platform';
-import { color, control, type } from '@/theme';
+import { buttonRadius, color, control, type } from '@/theme';
 
 export type ButtonVariant =
   | 'primary-amber'
@@ -65,7 +64,6 @@ export function Button({
   style,
   testID,
 }: Props) {
-  const { buttonRadius } = usePlatform();
   const height = small ? control.buttonSm : control.button;
   const labelColor = onDark && isTransparent(variant) ? color.amber : LABEL_COLOR[variant];
 
