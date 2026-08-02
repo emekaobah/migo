@@ -69,6 +69,33 @@ jest.mock('expo-local-authentication', () => ({
   AuthenticationType: { FINGERPRINT: 1, FACIAL_RECOGNITION: 2 },
 }));
 
+// -------------------------------------------------------------------- Crypto
+
+/**
+ * Backed by Node's real SHA-256 rather than a stub, so `secure-pin` tests
+ * exercise actual hashing — a fake digest would make "wrong PIN is rejected"
+ * pass for the wrong reason. Randomness is a deterministic counter so salts
+ * differ between calls without making the tests flaky.
+ */
+let mockRandomCounter = 0;
+
+jest.mock('expo-crypto', () => {
+  // jest.mock factories are hoisted above imports, so require is the only way
+  // to reach node:crypto from in here.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createHash } = require('node:crypto');
+  return {
+    CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+    digestStringAsync: jest.fn(async (_algorithm: string, data: string) =>
+      createHash('sha256').update(data).digest('hex'),
+    ),
+    getRandomBytesAsync: jest.fn(async (size: number) => {
+      mockRandomCounter += 1;
+      return Uint8Array.from({ length: size }, (_, i) => (mockRandomCounter * 31 + i) % 256);
+    }),
+  };
+});
+
 // ------------------------------------------------------------------- Haptics
 
 jest.mock('expo-haptics', () => ({
