@@ -3,6 +3,8 @@
  *
  * Hex literals live in `tokens.ts` and nowhere else; eslint enforces that.
  */
+import { color } from './tokens';
+
 export { color, onNavy, radius, space, control, duration, type Color } from './tokens';
 export { type, currency, fontFamily, type TypeRole } from './typography';
 export {
@@ -12,8 +14,6 @@ export {
   biometric,
   pinHasEqualProminence,
 } from './platform';
-
-import { color } from './tokens';
 
 /** The surface the app boots on, before any screen mounts. */
 export const BOOT_BACKGROUND = color.navy;
