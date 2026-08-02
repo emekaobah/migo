@@ -15,7 +15,7 @@ import { color } from '@/theme';
  * component for an `expo-image` at the same 98:43 ratio; nothing else changes,
  * because every screen goes through here.
  */
-export function BrandMark({ height = 26 }: { height?: number }) {
+export function BrandMark({ height = 26 }: Readonly<{ height?: number }>) {
   return (
     <View
       accessibilityRole="image"

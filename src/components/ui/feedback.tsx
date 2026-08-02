@@ -4,7 +4,7 @@ import { Animated, Easing, StyleSheet, Text, View, type ViewStyle } from 'react-
 import { color, duration, onNavy, space, type } from '@/theme';
 
 /** 44px ring, amber arc, 0.9s linear — the `loading` screen spinner. */
-export function Spinner({ size = 44 }: { size?: number }) {
+export function Spinner({ size = 44 }: Readonly<{ size?: number }>) {
   // Lazy useState rather than useRef: the value is read during render to build
   // the interpolation, which `react-hooks/refs` rightly flags on a ref.
   const [spin] = useState(() => new Animated.Value(0));
@@ -36,11 +36,11 @@ export function Spinner({ size = 44 }: { size?: number }) {
   );
 }
 
-type ProgressProps = {
+type ProgressProps = Readonly<{
   total: number;
   cleared: number;
   style?: ViewStyle;
-};
+}>;
 
 /**
  * One segment per instalment on the `active` loan card. Segments rather than a
@@ -57,7 +57,7 @@ export function SegmentedProgress({ total, cleared, style }: ProgressProps) {
     >
       {Array.from({ length: total }, (_, i) => (
         <View
-          key={i}
+          key={`segment-${i}`}
           style={[
             styles.segment,
             { backgroundColor: i < cleared ? color.successAccent : onNavy.track },
@@ -68,11 +68,11 @@ export function SegmentedProgress({ total, cleared, style }: ProgressProps) {
   );
 }
 
-type ErrorProps = {
+type ErrorProps = Readonly<{
   message: string;
   /** Errors on navy use the lighter amber; on light surfaces they use danger. */
   onDark?: boolean;
-};
+}>;
 
 /**
  * Validation message above the primary button.

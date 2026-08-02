@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 
 import { color, control, radius, space, type } from '@/theme';
 
-type RowProps = {
+type RowProps = Readonly<{
   label: string;
   value?: string;
   sub?: string;
@@ -14,7 +14,7 @@ type RowProps = {
   destructive?: boolean;
   right?: ReactNode;
   style?: ViewStyle;
-};
+}>;
 
 /**
  * Tappable list row. 48px minimum, like everything else that takes a touch —

@@ -2,11 +2,17 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { color, radius, space, type } from '@/theme';
 
-type Props = {
+type Props = Readonly<{
   /** The digits entered so far, 0–6 characters. */
   value: string;
   length?: number;
-};
+}>;
+
+/** filled | active (next to be typed) | empty — chosen once, not per style prop. */
+function boxState(value: string, index: number): 'filled' | 'active' | 'empty' {
+  if (value[index] !== undefined) return 'filled';
+  return index === value.length ? 'active' : 'empty';
+}
 
 /**
  * The six enrolment-code boxes on `otp`.
@@ -23,11 +29,9 @@ export function CodeBoxes({ value, length = 6 }: Props) {
     >
       {Array.from({ length }, (_, i) => {
         const digit = value[i];
-        const filled = digit !== undefined;
-        const active = !filled && i === value.length;
 
         return (
-          <View key={i} style={[styles.box, filled ? styles.filled : active ? styles.active : styles.empty]}>
+          <View key={`box-${i}`} style={[styles.box, styles[boxState(value, i)]]}>
             <Text style={styles.digit}>{digit ?? ''}</Text>
           </View>
         );
@@ -70,11 +74,16 @@ const styles = StyleSheet.create({
   },
 });
 
-type PinProps = {
+type PinProps = Readonly<{
   filled: number;
   length?: number;
   /** Amber dots on navy, navy dots on light. */
   onDark?: boolean;
+}>;
+
+const dotFill = (filled: boolean, onDark: boolean) => {
+  if (!filled) return onDark ? 'transparent' : color.border;
+  return onDark ? color.amber : color.navy;
 };
 
 /** The six PIN dots on `bind` and `pinlock`. */
@@ -86,12 +95,11 @@ export function PinDots({ filled, length = 6, onDark = false }: PinProps) {
     >
       {Array.from({ length }, (_, i) => (
         <View
-          key={i}
+          key={`dot-${i}`}
           style={[
             pinStyles.dot,
             {
-              backgroundColor:
-                i < filled ? (onDark ? color.amber : color.navy) : onDark ? 'transparent' : color.border,
+              backgroundColor: dotFill(i < filled, onDark),
               borderColor: onDark ? color.amber : color.border,
             },
           ]}

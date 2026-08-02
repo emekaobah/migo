@@ -116,7 +116,7 @@ export function nextInstalment(schedule: Instalment[], paidCount: number): Insta
 
 /** Date arithmetic that does not mutate its input. */
 export function addDays(date: Date, days: number): Date {
-  const next = new Date(date.getTime());
+  const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
 }

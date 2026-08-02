@@ -4,10 +4,11 @@ import { color, control, showsInScreenBack, space, type } from '@/theme';
 
 import { BrandMark } from './brand-mark';
 
-type Props =
+type Props = Readonly<
   | { variant: 'brand'; onHelp: () => void }
   | { variant: 'back'; title?: string; onBack: () => void }
-  | { variant: 'step'; step: string; onHelp: () => void };
+  | { variant: 'step'; step: string; onHelp: () => void }
+>;
 
 /**
  * The three header shapes in the design.

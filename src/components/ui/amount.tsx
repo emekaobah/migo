@@ -2,13 +2,13 @@ import { StyleSheet, Text, type TextStyle } from 'react-native';
 
 import { color, type } from '@/theme';
 
-type Props = {
+type Props = Readonly<{
   /** Already formatted — pass `naira(x)` from `lib/format`. */
   value: string;
   size?: 'display' | 'displayLarge' | 'h2' | 'body';
   onDark?: boolean;
   style?: TextStyle;
-};
+}>;
 
 /**
  * Currency text. Always tabular so figures do not jitter as digits change,

@@ -10,7 +10,7 @@ export type ButtonVariant =
   | 'destructive'
   | 'tertiary';
 
-type Props = {
+type Props = Readonly<{
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
@@ -20,7 +20,31 @@ type Props = {
   onDark?: boolean;
   style?: ViewStyle;
   testID?: string;
+}>;
+
+/**
+ * A filled variant is fully described by its resting and pressed colours, so
+ * the table says exactly that and the component stops branching.
+ */
+const FILL: Partial<Record<ButtonVariant, { rest: string; pressed: string }>> = {
+  'primary-amber': { rest: color.amber, pressed: color.amberPressed },
+  'primary-navy': { rest: color.navy, pressed: color.navyPressed },
+  tonal: { rest: color.surfaceAlt, pressed: color.surfaceAltPressed },
+  destructive: { rest: color.danger, pressed: color.dangerPressed },
 };
+
+const LABEL_COLOR: Record<ButtonVariant, string> = {
+  'primary-amber': color.navy,
+  'primary-navy': color.card,
+  destructive: color.card,
+  tonal: color.navy,
+  // Overridden to amber when sitting on a dark surface.
+  outlined: color.navy,
+  tertiary: color.navy,
+};
+
+/** Transparent variants only differ in whether they carry a border. */
+const TRANSPARENT_PRESSED = { dark: color.navyPressed, light: color.cardPressed };
 
 /**
  * The one button in this product.
@@ -41,6 +65,7 @@ export function Button({
   testID,
 }: Props) {
   const height = small ? control.buttonSm : control.button;
+  const labelColor = onDark && isTransparent(variant) ? color.amber : LABEL_COLOR[variant];
 
   return (
     <Pressable
@@ -51,12 +76,12 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         { height, borderRadius: buttonRadius },
-        fill(variant, pressed, onDark),
+        surfaceFor(variant, pressed, onDark),
         style,
       ]}
     >
       <View style={styles.center}>
-        <Text style={[styles.label, labelColor(variant, onDark)]} numberOfLines={1}>
+        <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -64,42 +89,27 @@ export function Button({
   );
 }
 
-function fill(variant: ButtonVariant, pressed: boolean, onDark: boolean): ViewStyle {
-  switch (variant) {
-    case 'primary-amber':
-      return { backgroundColor: pressed ? color.amberPressed : color.amber };
-    case 'primary-navy':
-      return { backgroundColor: pressed ? color.navyPressed : color.navy };
-    case 'tonal':
-      return { backgroundColor: pressed ? color.surfaceAltPressed : color.surfaceAlt };
-    case 'destructive':
-      return { backgroundColor: pressed ? color.dangerPressed : color.danger };
-    case 'outlined':
-      return {
-        borderWidth: 1.5,
-        borderColor: onDark ? color.amber : color.border,
-        backgroundColor: pressed ? (onDark ? color.navyPressed : color.cardPressed) : 'transparent',
-      };
-    case 'tertiary':
-      return {
-        backgroundColor: pressed ? (onDark ? color.navyPressed : color.cardPressed) : 'transparent',
-      };
-  }
-}
+const isTransparent = (variant: ButtonVariant) =>
+  variant === 'outlined' || variant === 'tertiary';
 
-function labelColor(variant: ButtonVariant, onDark: boolean) {
-  switch (variant) {
-    case 'primary-amber':
-      return { color: color.navy };
-    case 'primary-navy':
-    case 'destructive':
-      return { color: color.card };
-    case 'tonal':
-      return { color: color.navy };
-    case 'outlined':
-    case 'tertiary':
-      return { color: onDark ? color.amber : color.navy };
+function surfaceFor(variant: ButtonVariant, pressed: boolean, onDark: boolean): ViewStyle {
+  const filled = FILL[variant];
+  if (filled) {
+    return { backgroundColor: pressed ? filled.pressed : filled.rest };
   }
+
+  const pressedBackground = onDark ? TRANSPARENT_PRESSED.dark : TRANSPARENT_PRESSED.light;
+  const background = pressed ? pressedBackground : 'transparent';
+
+  if (variant === 'outlined') {
+    return {
+      backgroundColor: background,
+      borderWidth: 1.5,
+      borderColor: onDark ? color.amber : color.border,
+    };
+  }
+
+  return { backgroundColor: background };
 }
 
 const styles = StyleSheet.create({

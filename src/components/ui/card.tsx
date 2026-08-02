@@ -13,12 +13,12 @@ const TONE: Record<CardTone, string> = {
   navy: color.navy,
 };
 
-type Props = {
+type Props = Readonly<{
   children: ReactNode;
   tone?: CardTone;
   style?: ViewStyle;
   testID?: string;
-};
+}>;
 
 /** Radius 16 throughout — the handoff's most-used card shape (33 uses). */
 export function Card({ children, tone = 'white', style, testID }: Props) {

@@ -18,7 +18,7 @@ const BACKGROUND: Record<Surface, string> = {
 export const isDarkSurface = (surface: Surface) =>
   surface === 'navy' || surface === 'ink' || surface === 'success';
 
-type Props = {
+type Props = Readonly<{
   surface: Surface;
   children: ReactNode;
   /** Wrap children in a ScrollView. Off by default — most screens are fixed. */
@@ -27,7 +27,7 @@ type Props = {
   padded?: boolean;
   edges?: readonly Edge[];
   style?: ViewStyle;
-};
+}>;
 
 /**
  * Full-bleed screen surface.

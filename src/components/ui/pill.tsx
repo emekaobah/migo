@@ -2,13 +2,26 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 
 import { color, control, radius, space, type } from '@/theme';
 
-type PillProps = {
+/**
+ * Selected controls invert to navy; unselected sit on their own surface.
+ * Expressed as a table so the components stop nesting ternaries per style prop.
+ */
+const SELECTION_FILL = {
+  selected: { rest: color.navy, pressed: color.navyPressed },
+  tonal: { rest: color.surfaceAlt, pressed: color.surfaceAltPressed },
+  card: { rest: color.card, pressed: color.cardPressed },
+} as const;
+
+const fillFor = (palette: { rest: string; pressed: string }, pressed: boolean) =>
+  pressed ? palette.pressed : palette.rest;
+
+type PillProps = Readonly<{
   label: string;
   sub?: string;
   selected: boolean;
   onPress: () => void;
   style?: ViewStyle;
-};
+}>;
 
 /** Tenor pills on `offers` — a 4-column grid of duration choices. */
 export function Pill({ label, sub, selected, onPress, style }: PillProps) {
@@ -20,15 +33,7 @@ export function Pill({ label, sub, selected, onPress, style }: PillProps) {
       accessibilityLabel={sub ? `${label}, ${sub}` : label}
       style={({ pressed }) => [
         styles.pill,
-        {
-          backgroundColor: selected
-            ? pressed
-              ? color.navyPressed
-              : color.navy
-            : pressed
-              ? color.surfaceAltPressed
-              : color.surfaceAlt,
-        },
+        { backgroundColor: fillFor(selected ? SELECTION_FILL.selected : SELECTION_FILL.tonal, pressed) },
         style,
       ]}
     >
@@ -54,10 +59,10 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12, fontWeight: '500' },
 });
 
-type ChipProps = {
+type ChipProps = Readonly<{
   label: string;
   onPress: () => void;
-};
+}>;
 
 /**
  * Quick-reply chips in support chat. 48px tall — the accessibility audit calls
@@ -71,7 +76,7 @@ export function Chip({ label, onPress }: ChipProps) {
       accessibilityLabel={label}
       style={({ pressed }) => [
         chipStyles.chip,
-        { backgroundColor: pressed ? color.cardPressed : color.card },
+        { backgroundColor: fillFor(SELECTION_FILL.card, pressed) },
       ]}
     >
       <Text style={chipStyles.label}>{label}</Text>
@@ -99,13 +104,13 @@ export function RadioRow({
   right,
   selected,
   onPress,
-}: {
+}: Readonly<{
   label: string;
   sub?: string;
   right?: React.ReactNode;
   selected: boolean;
   onPress: () => void;
-}) {
+}>) {
   return (
     <Pressable
       onPress={onPress}
@@ -113,15 +118,7 @@ export function RadioRow({
       accessibilityState={{ selected }}
       style={({ pressed }) => [
         radioStyles.row,
-        {
-          backgroundColor: selected
-            ? pressed
-              ? color.navyPressed
-              : color.navy
-            : pressed
-              ? color.cardPressed
-              : color.card,
-        },
+        { backgroundColor: fillFor(selected ? SELECTION_FILL.selected : SELECTION_FILL.card, pressed) },
       ]}
     >
       <View

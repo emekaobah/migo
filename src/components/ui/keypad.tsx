@@ -5,13 +5,24 @@ import { color, onNavy, radius, space, type } from '@/theme';
 
 export type KeypadHeight = 50 | 54 | 56;
 
-type Props = {
+type Props = Readonly<{
   onDigit: (digit: string) => void;
   onBackspace: () => void;
   /** 50 on `otp`, 54 on `bind`, 56 on `enrol` and `pinlock`. */
   keyHeight?: KeypadHeight;
   /** Navy keys use white overlays; light keys use the tonal surface. */
   onDark?: boolean;
+}>;
+
+/** Navy keys use white overlays; light keys use the tonal surface. */
+const KEY_FILL = {
+  dark: { rest: onNavy.keypad, pressed: onNavy.keypadPressed },
+  light: { rest: color.surfaceAlt, pressed: color.surfaceAltPressed },
+} as const;
+
+const keyFill = (onDark: boolean, pressed: boolean) => {
+  const palette = onDark ? KEY_FILL.dark : KEY_FILL.light;
+  return pressed ? palette.pressed : palette.rest;
 };
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
@@ -51,13 +62,13 @@ function Key({
   onDark,
   onPress,
   accessibilityLabel,
-}: {
+}: Readonly<{
   label: string;
   height: number;
   onDark: boolean;
   onPress: () => void;
   accessibilityLabel?: string;
-}) {
+}>) {
   return (
     <Pressable
       onPress={onPress}
@@ -66,15 +77,7 @@ function Key({
       style={({ pressed }) => [
         styles.key,
         { height },
-        {
-          backgroundColor: onDark
-            ? pressed
-              ? onNavy.keypadPressed
-              : onNavy.keypad
-            : pressed
-              ? color.surfaceAltPressed
-              : color.surfaceAlt,
-        },
+        { backgroundColor: keyFill(onDark, pressed) },
       ]}
     >
       <Text style={[styles.label, { color: onDark ? color.card : color.text }]}>{label}</Text>

@@ -8,12 +8,12 @@ export type AccordionItem = {
   answer: string[];
 };
 
-type Props = {
+type Props = Readonly<{
   items: AccordionItem[];
   /** The single open key, or null. Single-open by design. */
   openKey: string | null;
   onToggle: (key: string) => void;
-};
+}>;
 
 /**
  * FAQ accordion — single-open.
@@ -43,8 +43,8 @@ export function Accordion({ items, openKey, onToggle }: Props) {
 
             {open ? (
               <View style={styles.answer}>
-                {item.answer.map((paragraph, i) => (
-                  <Text key={i} style={styles.paragraph}>
+                {item.answer.map((paragraph) => (
+                  <Text key={paragraph} style={styles.paragraph}>
                     {paragraph}
                   </Text>
                 ))}

@@ -22,7 +22,7 @@ module.exports = defineConfig([
             'No hex colours outside src/theme. Import the token instead — see src/theme/tokens.ts.',
         },
         {
-          selector: "Literal[value=/^rgba?\\(/]",
+          selector: String.raw`Literal[value=/^rgba?\(/]`,
           message:
             'No rgb()/rgba() literals outside src/theme. Use the onNavy overlays in src/theme/tokens.ts.',
         },

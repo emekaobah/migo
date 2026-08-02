@@ -201,7 +201,7 @@ export default function KitchenSink() {
   );
 }
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label}</Text>

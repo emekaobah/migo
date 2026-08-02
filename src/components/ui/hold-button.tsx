@@ -6,13 +6,13 @@ import { buttonRadius, color, control, duration, type } from '@/theme';
 
 const STEP_PERCENT = 6;
 
-type Props = {
+type Props = Readonly<{
   /** Fires once when the sweep reaches 100. */
   onComplete: () => void;
   label?: string;
   holdingLabel?: string;
   testID?: string;
-};
+}>;
 
 /**
  * Hold-to-accept on `confirm` — the deliberate friction before taking a loan.

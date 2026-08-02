@@ -14,12 +14,25 @@ export function naira(amount: number): string {
   return `${NGN}${grouped(Math.round(amount))}`;
 }
 
-/** `199700` → `"199,700"` — when the sign is rendered separately. */
+/**
+ * `199700` → `"199,700"` — when the sign is rendered separately.
+ *
+ * Grouped by walking the digits rather than with the usual
+ * `/\B(?=(\d{3})+(?!\d))/` lookahead: that pattern backtracks super-linearly,
+ * and this runs on every amount on every render.
+ */
 export function grouped(amount: number): string {
-  const negative = amount < 0;
   const digits = Math.abs(Math.round(amount)).toString();
-  const withSeparators = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return negative ? `-${withSeparators}` : withSeparators;
+
+  let out = '';
+  for (let i = 0; i < digits.length; i++) {
+    // A separator goes before every digit whose distance from the end is a
+    // multiple of three, except at the very start.
+    if (i > 0 && (digits.length - i) % 3 === 0) out += ',';
+    out += digits[i];
+  }
+
+  return amount < 0 ? `-${out}` : out;
 }
 
 /**

@@ -39,10 +39,20 @@ describe('Button is never disabled', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('has no disabled prop in its public type', async () => {
-    // A compile-time guard made explicit: adding `disabled` should fail review.
-    // @ts-expect-error — Button must not accept a disabled prop.
-    await render(<Button label="Continue" onPress={() => {}} disabled />);
+  it('ignores a disabled prop even if one is forced past the type', async () => {
+    // `@ts-expect-error` alone is a compile-time guard and asserts nothing at
+    // runtime. This forces the prop through and proves the button still works,
+    // so a future refactor cannot quietly start honouring it.
+    const onPress = jest.fn();
+    const { getByTestId } = await render(
+      // @ts-expect-error — Button must not accept a disabled prop.
+      <Button label="Continue" onPress={onPress} testID="cta" disabled />,
+    );
+
+    fireEvent.press(getByTestId('cta'));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(getByTestId('cta').props.accessibilityState?.disabled).toBeFalsy();
   });
 });
 
