@@ -165,12 +165,7 @@ export const mockApi: MigoApi = {
   },
 };
 
-/** Test and demo affordance — resets the stand-in server state. */
+/** Test affordance — resets the stand-in server state between cases. */
 export function resetMockApi() {
   currentLoan = null;
-}
-
-/** Demo affordance — seeds an active loan without walking the whole journey. */
-export function seedLoan(loan: Loan) {
-  currentLoan = loan;
 }
