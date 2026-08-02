@@ -2,6 +2,7 @@
   "name": "migo",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.12.1",
   "dependencies": {
     "expo": "~57.0.9",
     "expo-clipboard": "~57.0.1",
