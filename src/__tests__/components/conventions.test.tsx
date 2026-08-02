@@ -10,6 +10,12 @@ import { Button, HoldButton } from '@/components/ui';
  *
  * Queries come from `render()` rather than the global `screen` — RNTL's screen
  * export is not wired up in this setup and throws `notImplemented`.
+ *
+ * **`render` and `fireEvent` are both awaited throughout.** On RNTL v14 with
+ * React 19 they return promises and open an `act` scope; leaving one unawaited
+ * means the next `act` starts inside it, and React logs "overlapping act()
+ * calls" for every one. The assertions still pass, so the cost is a green run
+ * full of console errors — which is how the first real warning gets missed.
  */
 
 describe('Button is never disabled', () => {
@@ -34,7 +40,7 @@ describe('Button is never disabled', () => {
     const onPress = jest.fn();
     const { getByTestId } = await render(<Button label="Continue" onPress={onPress} testID="cta" />);
 
-    fireEvent.press(getByTestId('cta'));
+    await fireEvent.press(getByTestId('cta'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -49,7 +55,7 @@ describe('Button is never disabled', () => {
       <Button label="Continue" onPress={onPress} testID="cta" disabled />,
     );
 
-    fireEvent.press(getByTestId('cta'));
+    await fireEvent.press(getByTestId('cta'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(getByTestId('cta').props.accessibilityState?.disabled).toBeFalsy();
@@ -57,40 +63,46 @@ describe('Button is never disabled', () => {
 });
 
 describe('HoldButton', () => {
-  /**
-   * `doNotFake` keeps the microtask queue real. RNTL v14's `render` is async,
-   * and faking every timer stalls both it and the auto-cleanup between tests —
-   * which shows up as "unable to find testID" in whichever test runs next,
-   * rather than as a failure in the test that actually caused it.
-   */
-  beforeEach(() => {
-    jest.useFakeTimers({
-      doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick', 'performance'],
-    });
-  });
-
   afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
   });
 
-  const renderHeld = (onComplete: () => void) =>
-    render(<HoldButton onComplete={onComplete} testID="hold" />);
+  /**
+   * Renders, *then* installs fake timers.
+   *
+   * Both RNTL's async `render` and its auto-cleanup need the real timer queue.
+   * Faking around them stalls the cleanup, and the symptom lands in whichever
+   * test runs next as "unable to find testID" rather than in the test that
+   * caused it. The hold interval is only created on `pressIn`, which happens
+   * after this returns, so nothing under test escapes the fakes.
+   *
+   * `doNotFake` keeps the microtask queue real so React's own act scopes still
+   * settle.
+   */
+  const renderHeld = async (onComplete: () => void) => {
+    const utils = await render(<HoldButton onComplete={onComplete} testID="hold" />);
+    jest.useFakeTimers({
+      doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick', 'performance'],
+    });
+    return utils;
+  };
+
+  /** Advances the sweep by `ms`, flushing the renders it triggers. */
+  const advance = (ms: number) => act(() => jest.advanceTimersByTime(ms));
 
   it('completes after about a second, and fires exactly once however long it is held', async () => {
     const onComplete = jest.fn();
     const { getByTestId } = await renderHeld(onComplete);
 
-    fireEvent(getByTestId('hold'), 'pressIn');
-    act(() => {
-      // 6% per 60ms → 100% needs 17 ticks, just over 1s.
-      jest.advanceTimersByTime(17 * 60);
-    });
+    await fireEvent(getByTestId('hold'), 'pressIn');
+    // 6% per 60ms → 100% needs 17 ticks, just over 1s.
+    await advance(17 * 60);
 
     expect(onComplete).toHaveBeenCalledTimes(1);
 
     // Holding well past completion must not accept the loan twice.
-    act(() => jest.advanceTimersByTime(40 * 60));
+    await advance(40 * 60);
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -98,8 +110,8 @@ describe('HoldButton', () => {
     const onComplete = jest.fn();
     const { getByTestId } = await renderHeld(onComplete);
 
-    fireEvent(getByTestId('hold'), 'pressIn');
-    act(() => jest.advanceTimersByTime(10 * 60)); // 60%
+    await fireEvent(getByTestId('hold'), 'pressIn');
+    await advance(10 * 60); // 60%
 
     expect(onComplete).not.toHaveBeenCalled();
   });
@@ -108,16 +120,16 @@ describe('HoldButton', () => {
     const onComplete = jest.fn();
     const { getByTestId } = await renderHeld(onComplete);
 
-    fireEvent(getByTestId('hold'), 'pressIn');
-    act(() => jest.advanceTimersByTime(10 * 60)); // 60%
-    fireEvent(getByTestId('hold'), 'pressOut');
+    await fireEvent(getByTestId('hold'), 'pressIn');
+    await advance(10 * 60); // 60%
+    await fireEvent(getByTestId('hold'), 'pressOut');
 
     expect(getByTestId('hold').props.accessibilityValue?.now).toBe(0);
 
     // A second partial hold must not finish the job the first one started.
-    fireEvent(getByTestId('hold'), 'pressIn');
-    act(() => jest.advanceTimersByTime(10 * 60));
-    fireEvent(getByTestId('hold'), 'pressOut');
+    await fireEvent(getByTestId('hold'), 'pressIn');
+    await advance(10 * 60);
+    await fireEvent(getByTestId('hold'), 'pressOut');
 
     expect(onComplete).not.toHaveBeenCalled();
   });

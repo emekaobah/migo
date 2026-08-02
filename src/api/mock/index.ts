@@ -1,5 +1,4 @@
 import { buildSchedule, computeExtension, outstandingAfter, totalRepayable } from '@/lib/loan-math';
-import { duration } from '@/theme';
 
 import type {
   Cancellable,
@@ -13,7 +12,16 @@ import type {
   WalletBank,
 } from '../types';
 import { after, delay } from './delay';
-import { ACCOUNTS, AMOUNTS, EXTENSION, TENORS, USSD, WALLETS } from './fixtures';
+import {
+  ACCOUNTS,
+  AMOUNTS,
+  BORROWER,
+  EXTENSION,
+  LATENCY,
+  TENORS,
+  USSD,
+  WALLETS,
+} from './fixtures';
 
 /**
  * The mock `MigoApi`.
@@ -31,28 +39,27 @@ let currentLoan: Loan | null = null;
 
 export const mockApi: MigoApi = {
   async requestCode() {
-    return after(0, { resendSeconds: 60 });
+    return after(LATENCY.requestCode, { resendSeconds: 60 });
   },
 
   async verifyCode(code: string) {
-    return after(400, { ok: code.length === 6 });
+    return after(LATENCY.verifyCode, { ok: code.length === 6 });
   },
 
   async ussdCode() {
-    return after(0, { ...USSD });
+    return after(LATENCY.ussdCode, { ...USSD });
   },
 
   async bindDevice() {
-    return after(600, { ok: true });
+    return after(LATENCY.bindDevice, { ok: true, name: BORROWER.name });
   },
 
   async getOffers(): Promise<{ tenors: Tenor[]; amounts: number[] }> {
-    // 1800ms — this is what the `loading` screen exists to cover.
-    return after(duration.loading, { tenors: TENORS, amounts: AMOUNTS });
+    return after(LATENCY.getOffers, { tenors: TENORS, amounts: AMOUNTS });
   },
 
   async listAccounts(): Promise<PayoutAccount[]> {
-    return after(300, ACCOUNTS);
+    return after(LATENCY.listAccounts, ACCOUNTS);
   },
 
   async acceptLoan(selection: OfferSelection): Promise<Loan> {
@@ -71,11 +78,11 @@ export const mockApi: MigoApi = {
     };
 
     currentLoan = loan;
-    return after(900, loan);
+    return after(LATENCY.acceptLoan, loan);
   },
 
   async getLoan(): Promise<Loan | null> {
-    return after(0, currentLoan);
+    return after(LATENCY.getLoan, currentLoan);
   },
 
   async getWallet(bank: WalletBank): Promise<Wallet> {
@@ -83,7 +90,7 @@ export const mockApi: MigoApi = {
       ? outstandingAfter(currentLoan.schedule, currentLoan.paidCount)
       : 0;
 
-    return after(700, {
+    return after(LATENCY.getWallet, {
       bank,
       ...WALLETS[bank],
       amountDue: outstanding,
@@ -96,7 +103,7 @@ export const mockApi: MigoApi = {
    * screen does not change.
    */
   watchPayment(wallet: Wallet): Cancellable<PaymentEvent> {
-    const pending = delay<PaymentEvent>(duration.walletDetect, {
+    const pending = delay<PaymentEvent>(LATENCY.watchPayment, {
       received: true,
       amount: wallet.amountDue,
     });
@@ -112,31 +119,58 @@ export const mockApi: MigoApi = {
     };
   },
 
+  /**
+   * Pay `pct` of the outstanding now; the remainder carries `EXTENSION.days`
+   * with `EXTENSION.rate` applied to it.
+   *
+   * The result is **applied**, not just reported: the old schedule is settled
+   * and replaced by the single carried payment at the new due date. Returning a
+   * loan whose `extendedTo` had moved while its schedule still described the
+   * old debt would leave `outstandingAfter` quoting the pre-extension figure,
+   * and the `active` screen reads exactly that.
+   */
   async extendLoan(pct: number = EXTENSION.pct): Promise<Loan> {
     if (!currentLoan) throw new Error('no loan to extend');
 
     const outstanding = outstandingAfter(currentLoan.schedule, currentLoan.paidCount);
+    // Extend from the date being extended past, not from today and not from the
+    // loan's original maturity — extending a loan already late gives 30 days
+    // from the missed date. `loan-math` documents and tests this.
     const nextDue = currentLoan.schedule[currentLoan.paidCount]?.dueAt ?? new Date();
 
     const extension = computeExtension(
       outstanding,
       pct,
       EXTENSION.days,
-      currentLoan.tenor.multiplier,
+      EXTENSION.rate,
       nextDue,
     );
 
-    currentLoan = { ...currentLoan, extendedTo: extension.newDueAt };
-    return after(900, currentLoan);
+    // Everything paid across the loan's whole life, including any earlier
+    // extension's `payToday`. Deriving this by slicing the schedule looks
+    // equivalent and is not: an extension resets `paidCount` to 0 and replaces
+    // the schedule, so from the second extension on the slice is empty and the
+    // loan silently understates what it has cost. `total - outstanding` holds
+    // at every point, starting from `acceptLoan` where total is the schedule's
+    // sum and nothing is yet paid.
+    const alreadyRepaid = currentLoan.total - outstanding;
+
+    currentLoan = {
+      ...currentLoan,
+      // The old schedule is settled: instalments already cleared, plus today's
+      // payment against the rest. What is left is one carried payment.
+      schedule: [{ index: 1, amount: extension.newOutstanding, dueAt: extension.newDueAt }],
+      paidCount: 0,
+      // What the loan will have cost in total, once extended.
+      total: alreadyRepaid + extension.payToday + extension.newOutstanding,
+      extendedTo: extension.newDueAt,
+    };
+
+    return after(LATENCY.extendLoan, currentLoan);
   },
 };
 
-/** Test and demo affordance — resets the stand-in server state. */
+/** Test affordance — resets the stand-in server state between cases. */
 export function resetMockApi() {
   currentLoan = null;
-}
-
-/** Demo affordance — seeds an active loan without walking the whole journey. */
-export function seedLoan(loan: Loan) {
-  currentLoan = loan;
 }

@@ -74,7 +74,7 @@ export function Screen({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   padded: {
-    paddingHorizontal: space.xxl - space.xs, // 20
+    paddingHorizontal: space.xl,
     paddingBottom: space.md,
   },
   scrollContent: { flexGrow: 1 },

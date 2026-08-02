@@ -1,7 +1,8 @@
 import { api } from '@/api/client';
 import { delay } from '@/api/mock/delay';
 import { resetMockApi } from '@/api/mock';
-import { AMOUNTS, TENORS } from '@/api/mock/fixtures';
+import { AMOUNTS, EXTENSION, LATENCY, TENORS } from '@/api/mock/fixtures';
+import { addDays, outstandingAfter } from '@/lib/loan-math';
 
 /**
  * Contract conformance and cancellation (PLAN §8a).
@@ -84,6 +85,91 @@ describe('contract', () => {
 
   it('rejects extending when there is no loan', async () => {
     await expect(api.extendLoan(0.3)).rejects.toThrow(/no loan/i);
+  });
+});
+
+describe('extendLoan', () => {
+  /** Takes a 90-day/3-payment loan to the point where one instalment has cleared. */
+  async function loanWithOnePaid() {
+    const accounts = await settle(api.listAccounts(), LATENCY.listAccounts);
+    await settle(
+      api.acceptLoan({ tenor: TENORS[3], principal: 99_600, accountId: accounts[0].id }, 'sig'),
+      LATENCY.acceptLoan,
+    );
+    const wallet = await settle(api.getWallet('sterling'), LATENCY.getWallet);
+    await settle(api.watchPayment(wallet).promise, LATENCY.watchPayment);
+    return settle(api.getLoan(), LATENCY.getLoan);
+  }
+
+  it('applies the extension rather than only recording it', async () => {
+    const before = await loanWithOnePaid();
+    const outstanding = outstandingAfter(before!.schedule, before!.paidCount);
+
+    const after = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+
+    // The bug this guards: moving `extendedTo` while leaving the old schedule
+    // in place, so the screen keeps quoting the pre-extension balance.
+    const carried = Math.round(outstanding) - Math.round(outstanding * EXTENSION.pct);
+    expect(outstandingAfter(after.schedule, after.paidCount)).toBe(
+      Math.round(carried * EXTENSION.rate),
+    );
+    expect(outstandingAfter(after.schedule, after.paidCount)).not.toBe(outstanding);
+  });
+
+  it('carries the remainder to a single payment 30 days past the date extended from', async () => {
+    const before = await loanWithOnePaid();
+    const nextDue = before!.schedule[before!.paidCount].dueAt;
+
+    const after = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+
+    expect(after.schedule).toHaveLength(1);
+    expect(after.extendedTo).toEqual(after.schedule[0].dueAt);
+    // Relative to the due date being extended past, not to today and not to the
+    // loan's original maturity.
+    expect(after.schedule[0].dueAt).toEqual(addDays(nextDue, EXTENSION.days));
+  });
+
+  it('prices the carry at the extension rate, not the loan tenor multiplier', async () => {
+    const before = await loanWithOnePaid();
+    const outstanding = outstandingAfter(before!.schedule, before!.paidCount);
+    const carried = Math.round(outstanding) - Math.round(outstanding * EXTENSION.pct);
+
+    const after = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+
+    expect(after.schedule[0].amount).toBe(Math.round(carried * EXTENSION.rate));
+    // A 90-day loan carries 1.37; charging that for 30 days is a pricing
+    // decision nobody made.
+    expect(after.schedule[0].amount).not.toBe(Math.round(carried * TENORS[3].multiplier));
+  });
+
+  it('keeps every earlier payment in the total across a second extension', async () => {
+    const before = await loanWithOnePaid();
+    const paidFirstInstalment = before!.schedule[0].amount;
+    const outstandingBefore = outstandingAfter(before!.schedule, before!.paidCount);
+    const payTodayFirst = Math.round(outstandingBefore * EXTENSION.pct);
+
+    const once = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+    const payTodaySecond = Math.round(
+      outstandingAfter(once.schedule, once.paidCount) * EXTENSION.pct,
+    );
+    const twice = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+
+    // Extending twice must not forget what was paid before the first extension.
+    // Deriving "already repaid" by slicing the schedule loses it: the first
+    // extension resets paidCount to 0 and replaces the schedule, so the slice
+    // is empty from then on and the loan understates its own lifetime cost.
+    expect(twice.total).toBe(
+      paidFirstInstalment +
+        payTodayFirst +
+        payTodaySecond +
+        outstandingAfter(twice.schedule, twice.paidCount),
+    );
+    expect(twice.total).toBeGreaterThan(once.total - outstandingAfter(once.schedule, 0));
+  });
+
+  it('rejects a percentage passed as 30 instead of 0.3', async () => {
+    await loanWithOnePaid();
+    await expect(api.extendLoan(30)).rejects.toThrow(RangeError);
   });
 });
 

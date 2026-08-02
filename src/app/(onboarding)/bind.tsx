@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
-import { BORROWER } from '@/api/mock/fixtures';
 import { Button, HeaderRow, InlineError, Keypad, PinDots, Screen } from '@/components/ui';
 import { BiometricCard } from '@/features/enrolment/biometric-card';
 import { authenticate, capability } from '@/lib/biometrics';
@@ -12,7 +11,7 @@ import { PIN_LENGTH, setPin } from '@/lib/secure-pin';
 import { useAuth } from '@/state/auth-context';
 import { biometric, space, type } from '@/theme';
 
-const UNAVAILABLE: Record<string, string> = {
+const UNAVAILABLE: Record<'no-hardware' | 'not-enrolled', string> = {
   'no-hardware': 'This phone has no fingerprint or face sensor.',
   'not-enrolled': `You haven't set up ${biometric.noun} on this phone yet.`,
 };
@@ -93,9 +92,9 @@ export default function BindScreen() {
     setBusy(true);
     try {
       await setPin(pinDigits);
-      await api.bindDevice('device-public-key');
+      const { name } = await api.bindDevice('device-public-key');
 
-      auth.markEnrolled(phone ?? BORROWER.phone, BORROWER.name);
+      auth.markEnrolled(phone ?? '', name);
       auth.markDeviceBound();
       auth.markPinSet();
       if (bioEnrolled) auth.markBioEnrolled();

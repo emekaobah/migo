@@ -8,6 +8,14 @@ import { radius } from './tokens';
  * Kept in one place because these are the differences an iOS-only dev loop
  * would miss until late — the plan calls that out as the riskiest drift in the
  * project (PLAN §9, "Android drift").
+ *
+ * Resolved from `Platform.OS`, once, at import. There is deliberately **no way
+ * to override this at runtime**: these are two real apps, and an Android build
+ * shows Android's controls because it is running on Android. An in-app switch
+ * would be a prototype affordance leaking into the product, and it would make
+ * every one of these values a lie on the device the app is actually installed
+ * on. What makes this build a proposal is the mocked data and the flows, not a
+ * toggle.
  */
 
 export const isAndroid = Platform.OS === 'android';

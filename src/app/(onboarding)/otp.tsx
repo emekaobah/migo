@@ -1,9 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
-import { createMockSmsRetriever } from '@/api/mock/sms-retriever';
+import { smsRetriever } from '@/api/sms';
 import { CodeBoxes, HeaderRow, InlineError, Keypad, Screen } from '@/components/ui';
 import { OtpStatusStrip } from '@/features/enrolment/otp-status-strip';
 import { UssdHintCard } from '@/features/enrolment/ussd-hint-card';
@@ -30,8 +30,8 @@ export default function OtpScreen() {
   const router = useRouter();
   const { openHelpFrom } = useNavOrigin();
   const advanced = useRef(false);
-  // Latest `advance` without making it an effect dependency.
-  const advanceRef = useRef<() => void>(() => {});
+  /** The auto-filled code, so the beat below can verify it without re-running. */
+  const autoFilled = useRef('');
 
   const advance = useCallback(() => {
     if (advanced.current) return;
@@ -40,39 +40,68 @@ export default function OtpScreen() {
     router.push('/(onboarding)/bind');
   }, [router]);
 
-  useEffect(() => {
-    advanceRef.current = advance;
-  }, [advance]);
+  const verify = useCallback(
+    async (candidate: string) => {
+      try {
+        const { ok } = await api.verifyCode(candidate);
+        if (ok) {
+          advance();
+          return;
+        }
+        errorHaptic();
+        setError('That code is not right. Check it and try again.');
+      } catch {
+        // A rejected request is not a wrong code, and telling the borrower it is
+        // would send them hunting for a mistake they did not make.
+        errorHaptic();
+        setError('We could not check that code. Try again, or use *561#.');
+      }
+      setCode('');
+    },
+    [advance],
+  );
+
+  /**
+   * Verifies the auto-filled code without becoming an effect dependency.
+   *
+   * `useRouter()` returns a fresh object on every render, so `advance` — and
+   * `verify` with it — changes identity constantly. Keying the 1.4s timer on
+   * that meant every countdown tick cleared and rescheduled it, and it never
+   * reached the end: the screen sat on a filled-in code forever.
+   */
+  const verifyAutoFilled = useEffectEvent((candidate: string) => {
+    void verify(candidate);
+  });
 
   // Listen for the code. Cancelled on unmount so leaving for the USSD path
   // does not leave a timer running behind a dead screen.
   useEffect(() => {
-    const retriever = createMockSmsRetriever();
-    const unsubscribe = retriever.onCode((incoming) => {
+    const unsubscribe = smsRetriever.onCode((incoming) => {
+      autoFilled.current = incoming;
       setCode(incoming);
       setReceived(true);
     });
-    void retriever.start();
+    void smsRetriever.start();
     // Best-effort: the code may still arrive, and the USSD route below works
     // regardless, so a failure here must not block the screen.
     api.requestCode(phone ?? '').catch(() => undefined);
 
     return () => {
       unsubscribe();
-      retriever.stop();
+      smsRetriever.stop();
     };
   }, [phone]);
 
-  // Auto-advance once the code has landed, after a beat so the borrower sees
-  // that it filled itself in rather than being thrown to the next screen.
+  // Verify and advance once the code has landed, after a beat so the borrower
+  // sees that it filled itself in rather than being thrown to the next screen.
   //
-  // Depends on `received` alone. Keying it on `advance` as well meant any
-  // unrelated re-render — the countdown ticks every second — cleared and
-  // rescheduled the 1.4s timer, so it could never reach the end and the screen
-  // would sit on a filled-in code forever.
+  // An auto-filled code goes through `verify` exactly like a typed one. Letting
+  // it skip straight to `advance` meant the two paths disagreed about what a
+  // valid code is, which stays invisible only for as long as the mock accepts
+  // everything six digits long.
   useEffect(() => {
     if (!received) return;
-    const timer = setTimeout(() => advanceRef.current(), duration.otpAdvance);
+    const timer = setTimeout(() => verifyAutoFilled(autoFilled.current), duration.otpAdvance);
     return () => clearTimeout(timer);
   }, [received]);
 
@@ -92,22 +121,12 @@ export default function OtpScreen() {
     if (next.length === CODE_LENGTH) void verify(next);
   };
 
-  const verify = async (candidate: string) => {
-    try {
-      const { ok } = await api.verifyCode(candidate);
-      if (ok) {
-        advance();
-        return;
-      }
-      errorHaptic();
-      setError('That code is not right. Check it and try again.');
-    } catch {
-      // A rejected request is not a wrong code, and telling the borrower it is
-      // would send them hunting for a mistake they did not make.
-      errorHaptic();
-      setError('We could not check that code. Try again, or use *561#.');
-    }
-    setCode('');
+  const backspace = () => {
+    tick();
+    // Clear the error too, matching `append` and `bind` — otherwise a stale
+    // "that code is not right" sits under a code being corrected.
+    setError(null);
+    setCode((current) => current.slice(0, -1));
   };
 
   return (
@@ -128,7 +147,7 @@ export default function OtpScreen() {
         <OtpStatusStrip resendIn={resendIn} received={received} />
         {error ? <InlineError message={error} /> : null}
 
-        <Keypad keyHeight={50} onDigit={append} onBackspace={() => { tick(); setCode((c) => c.slice(0, -1)); }} />
+        <Keypad keyHeight={50} onDigit={append} onBackspace={backspace} />
 
         <UssdHintCard onUseUssd={() => router.push('/(onboarding)/ussd')} />
       </View>

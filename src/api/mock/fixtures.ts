@@ -25,8 +25,15 @@ export const ACCOUNTS: PayoutAccount[] = [
  * Extension terms. **30% / 30 days, client-confirmed 2026-08-02**
  * (OPEN-QUESTIONS #1). Parameterised because a rate is a business input that
  * will change again — not because the decision is provisional.
+ *
+ * `rate` is the multiplier applied to the carried amount over those 30 days.
+ * It is stated here rather than reused from the loan's own tenor multiplier: a
+ * 90-day loan carries 1.37, and charging a 90-day rate for a 30-day extension
+ * is a pricing decision nobody made. 1.16 is the published 30-day multiplier,
+ * so a 30-day carry costs what 30 days costs. **Illustrative and unconfirmed —
+ * the real extension rate is an open question for the client.**
  */
-export const EXTENSION = { pct: 0.3, days: 30 } as const;
+export const EXTENSION = { pct: 0.3, days: 30, rate: 1.16 } as const;
 
 /** The USSD enrolment code shown when SMS never lands. */
 export const USSD = { code: '419 736', validMinutes: 10 } as const;
@@ -39,3 +46,33 @@ export const WALLETS = {
 
 /** The borrower this proposal build demonstrates with. */
 export const BORROWER = { name: 'Tunde', fullName: 'Tunde Adeyemi', phone: '8031234567' } as const;
+
+/**
+ * Simulated server latency, in milliseconds.
+ *
+ * The prototype's timings, reproduced so the demo feels like the design rather
+ * than like an instant local function — `getOffers` at 1800ms is precisely what
+ * the `loading` screen exists to cover.
+ *
+ * These belong to the mock, not to the theme: they describe a backend being
+ * stood in for, and when a real HTTP client replaces this file they disappear
+ * with it rather than lingering in the design tokens.
+ */
+export const LATENCY = {
+  requestCode: 0,
+  verifyCode: 400,
+  ussdCode: 0,
+  bindDevice: 600,
+  getOffers: 1800,
+  listAccounts: 300,
+  acceptLoan: 900,
+  getLoan: 0,
+  getWallet: 700,
+  extendLoan: 900,
+  /** The wallet transfer detection window. */
+  watchPayment: 6000,
+  /** Simulated SMS arrival — the real retriever needs a backend (PLAN §8a). */
+  smsArrival: 3200,
+  /** Support agent typing indicator, before a scripted reply lands. */
+  agentTyping: 1600,
+} as const;

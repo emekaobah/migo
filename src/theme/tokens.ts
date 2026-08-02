@@ -89,16 +89,25 @@ export const control = {
   keySm: 50,
 } as const;
 
-/** Timings, all simulating real async work (HANDOFF §"Interactions"). */
+/**
+ * Presentation timings — animations and deliberate beats (HANDOFF
+ * §"Interactions").
+ *
+ * Simulated **server** latency is not here. It lives in `api/mock/fixtures.ts`
+ * as `LATENCY`, because how long a request takes is a property of the backend
+ * being stood in for, not of the design system — and keeping it here made the
+ * API layer import the theme.
+ */
 export const duration = {
-  smsArrival: 3200,
+  /** Beat after the code fills itself in, before `otp` advances. */
   otpAdvance: 1400,
+  /** "Recognised — opening…" on `lock`. */
   biometric: 700,
-  loading: 1800,
+  /** Hold-to-accept sweep interval; 6% per step. */
   holdStep: 60,
-  agentTyping: 1600,
-  walletDetect: 6000,
+  /** Balance settling on `wallet` once payment is detected. */
   walletSettle: 1400,
+  /** One full rotation of the loading spinner. */
   spinner: 900,
 } as const;
 
