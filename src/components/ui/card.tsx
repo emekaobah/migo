@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { color, radius, space } from '@/theme';
 
@@ -16,7 +16,7 @@ const TONE: Record<CardTone, string> = {
 type Props = Readonly<{
   children: ReactNode;
   tone?: CardTone;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   testID?: string;
 }>;
 

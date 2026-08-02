@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { color, control, radius, space, type } from '@/theme';
 
@@ -13,7 +13,7 @@ type RowProps = Readonly<{
   divider?: boolean;
   destructive?: boolean;
   right?: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }>;
 
 /**

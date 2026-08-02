@@ -65,6 +65,9 @@ const styles = StyleSheet.create({
     minWidth: control.tap,
     minHeight: control.tap,
     justifyContent: 'center',
+    // View defaults to alignItems: 'stretch', which left-aligns the glyph
+    // inside the 48px target instead of centring it.
+    alignItems: 'center',
   },
   chevron: { fontSize: 30, color: color.navy },
   title: { ...type.bodyLarge, fontWeight: '700' },

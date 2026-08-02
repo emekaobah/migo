@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { color, space } from '@/theme';
@@ -26,7 +26,7 @@ type Props = Readonly<{
   /** Screen padding. The handoff uses 20–24px sides, 10–12px bottom. */
   padded?: boolean;
   edges?: readonly Edge[];
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }>;
 
 /**

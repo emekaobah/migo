@@ -80,6 +80,10 @@ jest.mock('expo-haptics', () => ({
 }));
 
 beforeEach(() => {
+  // Clears call history on the native mocks. The resets below only clear the
+  // data and the scripted scenario, so without this a test asserting
+  // "setItemAsync called once" would see the previous test's calls too.
+  jest.clearAllMocks();
   secureStoreMock.reset();
   localAuthMock.reset();
 });

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, type TextStyle } from 'react-native';
+import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 
 import { color, type } from '@/theme';
 
@@ -7,7 +7,7 @@ type Props = Readonly<{
   value: string;
   size?: 'display' | 'displayLarge' | 'h2' | 'body';
   onDark?: boolean;
-  style?: TextStyle;
+  style?: StyleProp<TextStyle>;
 }>;
 
 /**

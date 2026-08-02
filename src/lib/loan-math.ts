@@ -93,6 +93,16 @@ export function computeExtension(
   rate: number,
   extendFrom: Date,
 ): Extension {
+  // `pct` is a fraction, not a percentage. Passing 30 instead of 0.3 would make
+  // payToday exceed the outstanding and carried go negative, and the screen
+  // would show a borrower a negative amount owed. Fail loudly instead.
+  if (!(pct >= 0 && pct <= 1)) {
+    throw new RangeError(`extension pct must be a fraction between 0 and 1, got ${pct}`);
+  }
+  if (outstanding < 0) {
+    throw new RangeError(`outstanding must not be negative, got ${outstanding}`);
+  }
+
   const payToday = Math.round(outstanding * pct);
   const carried = Math.round(outstanding) - payToday;
 

@@ -43,8 +43,11 @@ export function Accordion({ items, openKey, onToggle }: Props) {
 
             {open ? (
               <View style={styles.answer}>
-                {item.answer.map((paragraph) => (
-                  <Text key={paragraph} style={styles.paragraph}>
+                {item.answer.map((paragraph, i) => (
+                  // Composite key: `item.key` is stable and unique, so this is
+                  // not a bare array index — and unlike keying on the text, it
+                  // survives an answer that repeats a paragraph verbatim.
+                  <Text key={`${item.key}-${i}`} style={styles.paragraph}>
                     {paragraph}
                   </Text>
                 ))}

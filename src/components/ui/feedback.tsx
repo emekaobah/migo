@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { color, duration, onNavy, space, type } from '@/theme';
 
@@ -39,7 +39,7 @@ export function Spinner({ size = 44 }: Readonly<{ size?: number }>) {
 type ProgressProps = Readonly<{
   total: number;
   cleared: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }>;
 
 /**

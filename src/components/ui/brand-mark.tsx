@@ -18,6 +18,7 @@ import { color } from '@/theme';
 export function BrandMark({ height = 26 }: Readonly<{ height?: number }>) {
   return (
     <View
+      accessible
       accessibilityRole="image"
       accessibilityLabel="Migo"
       style={[styles.mark, { height, width: height * (98 / 43) }]}

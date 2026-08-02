@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { color, control, radius, space, type } from '@/theme';
 
@@ -20,7 +20,7 @@ type PillProps = Readonly<{
   sub?: string;
   selected: boolean;
   onPress: () => void;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }>;
 
 /** Tenor pills on `offers` — a 4-column grid of duration choices. */
@@ -116,6 +116,7 @@ export function RadioRow({
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
+      accessibilityLabel={sub ? `${label}, ${sub}` : label}
       style={({ pressed }) => [
         radioStyles.row,
         { backgroundColor: fillFor(selected ? SELECTION_FILL.selected : SELECTION_FILL.card, pressed) },

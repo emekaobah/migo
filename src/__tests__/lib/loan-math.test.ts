@@ -147,6 +147,25 @@ describe('computeExtension — 30% / 30 days, client-confirmed', () => {
     expect(ext.newDueAt).not.toEqual(addDays(ORIGIN, 30));
   });
 
+  it('rejects a percentage passed as 30 instead of 0.30', () => {
+    // The failure this prevents: payToday exceeds the outstanding, carried goes
+    // negative, and the extend screen shows a borrower a negative amount owed.
+    expect(() => computeExtension(100_000, 30, DAYS, RATE, ORIGIN)).toThrow(RangeError);
+  });
+
+  it.each([-0.1, 1.01, NaN])('rejects an out-of-range pct: %p', (bad) => {
+    expect(() => computeExtension(100_000, bad, DAYS, RATE, ORIGIN)).toThrow(RangeError);
+  });
+
+  it('rejects a negative outstanding', () => {
+    expect(() => computeExtension(-1, PCT, DAYS, RATE, ORIGIN)).toThrow(RangeError);
+  });
+
+  it('accepts the boundaries 0 and 1', () => {
+    expect(computeExtension(100_000, 0, DAYS, RATE, ORIGIN).payToday).toBe(0);
+    expect(computeExtension(100_000, 1, DAYS, RATE, ORIGIN).carried).toBe(0);
+  });
+
   it('keeps the percentage and window parameterised', () => {
     // Proves a rate change is a fixtures edit, not a code change.
     const ext = computeExtension(100_000, 0.2, 45, RATE, ORIGIN);
