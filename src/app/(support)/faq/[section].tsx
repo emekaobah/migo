@@ -20,10 +20,22 @@ export default function FaqSectionScreen() {
   const router = useRouter();
   const { openChatFrom } = useNavOrigin();
 
-  const [section, setSection] = useState<FaqSection | null>(null);
-  const [missing, setMissing] = useState(false);
+  /**
+   * Keyed by the route it answers.
+   *
+   * If this screen is ever reused for a new `key` rather than remounted, bare
+   * state would show the previous section until the fetch resolved. Clearing it
+   * at the top of the effect would be a synchronous setState inside an effect;
+   * keying sidesteps both, and matches how `help` holds its search results.
+   */
+  const [loaded, setLoaded] = useState<{ key: string; section: FaqSection | null } | null>(null);
   /** Lifted so only one answer is open at a time (HANDOFF §19). */
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [opened, setOpened] = useState<{ key: string; question: string } | null>(null);
+
+  const forThisKey = loaded?.key === key ? loaded : null;
+  const section = forThisKey?.section ?? null;
+  const missing = forThisKey !== null && forThisKey.section === null;
+  const openKey = opened?.key === key ? opened.question : null;
 
   useEffect(() => {
     let active = true;
@@ -32,12 +44,10 @@ export default function FaqSectionScreen() {
       .sections()
       .then((all) => {
         if (!active) return;
-        const found = all.find((s) => s.key === key) ?? null;
-        setSection(found);
-        setMissing(found === null);
+        setLoaded({ key, section: all.find((s) => s.key === key) ?? null });
       })
       .catch(() => {
-        if (active) setMissing(true);
+        if (active) setLoaded({ key, section: null });
       });
 
     return () => {
@@ -75,7 +85,11 @@ export default function FaqSectionScreen() {
           }))}
           openKey={openKey}
           // Single-open: tapping the open one closes it, anything else replaces it.
-          onToggle={(key) => setOpenKey((current) => (current === key ? null : key))}
+          onToggle={(question) =>
+            setOpened((current) =>
+              current?.key === key && current.question === question ? null : { key, question },
+            )
+          }
         />
       ) : null}
 

@@ -101,8 +101,15 @@ const REPLIES: Record<string, (facts: ChatFacts) => string> = {
   // PLAN §5 supersedes, and a rate written here would be a second place to
   // change it and a second chance for chat to contradict the extend screen.
   'Extend my loan': (facts) => {
-    if (!facts.extension || !facts.loan) {
+    // These are two different situations and must not share a reply. Collapsing
+    // them told a borrower with a live loan that they had none, purely because
+    // the quote had not come back yet — alarming, and false.
+    if (!facts.loan) {
       return 'You have no loan running at the moment, so there is nothing to extend. As soon as you take one, Extend appears on your loan screen.';
+    }
+
+    if (!facts.extension) {
+      return 'I can see your loan, but I cannot pull the exact extension figures this second. Open Extend on your loan screen and it will show you what you would pay today.';
     }
 
     const pct = Math.round(facts.extension.pct * 100);

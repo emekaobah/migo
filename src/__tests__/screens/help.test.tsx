@@ -96,12 +96,19 @@ describe('help — navigation origin', () => {
 
 describe('help — index and search', () => {
   it('puts chat above the search field and the sections', async () => {
-    const { queryByText } = await renderScreen('/(loan)/active');
+    const { toJSON } = await renderScreen('/(loan)/active');
 
-    // Chat first is the design's deliberate order: someone opening Help is
-    // often stuck rather than browsing.
-    expect(queryByText('Chat with support')).not.toBeNull();
-    expect(queryByText('About Migo')).not.toBeNull();
+    // Chat first is the design's deliberate order — someone opening Help is
+    // often stuck rather than browsing — so assert the *order*, not merely that
+    // all three exist. Presence alone would pass with chat at the bottom.
+    const tree = JSON.stringify(toJSON());
+    const chat = tree.indexOf('Chat with support');
+    const search = tree.indexOf('Search help');
+    const firstSection = tree.indexOf('About Migo');
+
+    expect(chat).toBeGreaterThan(-1);
+    expect(search).toBeGreaterThan(chat);
+    expect(firstSection).toBeGreaterThan(search);
   });
 
   it('shows every section with its question count', async () => {
@@ -120,8 +127,13 @@ describe('help — index and search', () => {
     await fireEvent.changeText(getByLabelText('Search help'), 'extend');
 
     await waitFor(() => expect(queryByText('Loan Repayment')).not.toBeNull());
-    // Legal rows belong to the index, not to a result list.
-    expect(queryByText('Terms and conditions')).toBeNull();
+
+    // Legal rows belong to the index, not to a result list. Asserted on the
+    // privacy row: the FAQ has a section titled "Terms and Conditions", which
+    // differs from the legal row's "Terms and conditions" only in case, so a
+    // capitalisation change on either would silently invert that assertion.
+    // "Privacy policy" has no section-title twin.
+    expect(queryByText('Privacy policy')).toBeNull();
   });
 
   it('offers the chat escape when nothing matches', async () => {

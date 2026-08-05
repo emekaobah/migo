@@ -8,8 +8,14 @@ type Props = Readonly<{
   onOpen: (section: FaqSection) => void;
 }>;
 
-/** The ten section rows: title, question count, chevron (HANDOFF §18). */
-export function SectionList({ sections, onOpen }: Props) {
+/**
+ * The ten section rows: title, question count, chevron (HANDOFF §18).
+ *
+ * Named `FaqSectionList` rather than `SectionList`: React Native exports a
+ * `SectionList` of its own, and a reader seeing the bare name in a screen would
+ * reasonably assume the virtualised list.
+ */
+export function FaqSectionList({ sections, onOpen }: Props) {
   return (
     <Card>
       {sections.map((section, i) => (

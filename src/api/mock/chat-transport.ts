@@ -15,6 +15,10 @@ import { LATENCY } from './fixtures';
  * reply arrives later through `subscribe`, after the typing indicator. That
  * split is deliberate — a `send` that resolved with the reply would make the
  * screen unable to show typing at all.
+ *
+ * Facts are read **after** the typing delay, not captured before it. The 1.6s
+ * pause is long enough for an in-flight extension quote to land, and the whole
+ * reason `getFacts` is a getter rather than a value is to pick that up.
  */
 export function createMockChatTransport(getFacts: () => ChatFacts): ChatTransport {
   let log: ChatMessage[] = [];
@@ -50,7 +54,6 @@ export function createMockChatTransport(getFacts: () => ChatFacts): ChatTranspor
       // together — the last one asked is the one being answered.
       pending?.cancel();
 
-      const facts = getFacts();
       const typing = delay(LATENCY.agentTyping, null);
       pending = typing;
 
@@ -60,7 +63,7 @@ export function createMockChatTransport(getFacts: () => ChatFacts): ChatTranspor
           push({
             id: nextId(),
             from: 'agent',
-            text: agentReply(labelFor(text), facts),
+            text: agentReply(labelFor(text), getFacts()),
             at: new Date(),
           });
         })

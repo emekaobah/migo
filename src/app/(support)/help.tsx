@@ -7,7 +7,7 @@ import { faqSource } from '@/api/faq';
 import { Card, HeaderRow, Row, Screen, Spinner } from '@/components/ui';
 import { ChatCard } from '@/features/support/chat-card';
 import { FaqSearch } from '@/features/support/faq-search';
-import { SectionList } from '@/features/support/section-list';
+import { FaqSectionList } from '@/features/support/faq-section-list';
 import { openLink } from '@/lib/links';
 import { useNavOrigin } from '@/state/nav-origin';
 import { space, type } from '@/theme';
@@ -89,7 +89,8 @@ export default function HelpScreen() {
 
   // While a search is in flight for a *different* query, show nothing rather
   // than the previous query's matches.
-  const shown = searching ? (results?.query === query ? results.sections : null) : sections;
+  const matches = results?.query === query ? results.sections : null;
+  const shown = searching ? matches : sections;
 
   return (
     <Screen surface="surface" scroll>
@@ -116,7 +117,7 @@ export default function HelpScreen() {
       ) : null}
 
       {shown !== null && shown.length > 0 ? (
-        <SectionList
+        <FaqSectionList
           sections={shown}
           onOpen={(section) => router.push(`/(support)/faq/${section.key}`)}
         />
