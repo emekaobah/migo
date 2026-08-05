@@ -3,6 +3,7 @@ export { Screen, isDarkSurface, type Surface } from './screen';
 export { Button, type ButtonVariant } from './button';
 export { HoldButton } from './hold-button';
 export { Card, type CardTone } from './card';
+export { Avatar, initials } from './avatar';
 export { Row } from './row';
 export { Amount } from './amount';
 export { Pill, Chip, RadioRow } from './pill';

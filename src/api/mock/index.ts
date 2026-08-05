@@ -5,9 +5,9 @@ import type {
   Loan,
   MigoApi,
   OfferSelection,
+  Offers,
   PaymentEvent,
   PayoutAccount,
-  Tenor,
   Wallet,
   WalletBank,
 } from '../types';
@@ -54,7 +54,7 @@ export const mockApi: MigoApi = {
     return after(LATENCY.bindDevice, { ok: true, name: BORROWER.name });
   },
 
-  async getOffers(): Promise<{ tenors: Tenor[]; amounts: number[] }> {
+  async getOffers(): Promise<Offers> {
     return after(LATENCY.getOffers, { tenors: TENORS, amounts: AMOUNTS });
   },
 

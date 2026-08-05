@@ -97,19 +97,29 @@ const chipStyles = StyleSheet.create({
   label: { ...type.body, color: color.navy, fontWeight: '600' },
 });
 
-/** Selection row with a radio — never colour alone. */
+/**
+ * Selection row with a radio — never colour alone.
+ *
+ * `labelRole` is the one thing that varies between the two places these
+ * appear. On `offers` the label is a sum of money and gets the handoff's
+ * 20px/700/tabular treatment; on `banks` it is an account name, where tabular
+ * figures and display weight would be wrong. It defaults to `amount` because
+ * that is the row the design specifies a size for.
+ */
 export function RadioRow({
   label,
   sub,
   right,
   selected,
   onPress,
+  labelRole = 'amount',
 }: Readonly<{
   label: string;
   sub?: string;
   right?: React.ReactNode;
   selected: boolean;
   onPress: () => void;
+  labelRole?: 'amount' | 'name';
 }>) {
   return (
     <Pressable
@@ -132,7 +142,14 @@ export function RadioRow({
       </View>
 
       <View style={radioStyles.text}>
-        <Text style={[radioStyles.label, { color: selected ? color.card : color.text }]}>{label}</Text>
+        <Text
+          style={[
+            labelRole === 'amount' ? radioStyles.label : radioStyles.labelName,
+            { color: selected ? color.card : color.text },
+          ]}
+        >
+          {label}
+        </Text>
         {sub ? (
           <Text style={[radioStyles.sub, { color: selected ? color.amber : color.textMuted }]}>{sub}</Text>
         ) : null}
@@ -169,5 +186,6 @@ const radioStyles = StyleSheet.create({
   },
   text: { flex: 1 },
   label: { fontSize: 20, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  labelName: { ...type.bodyLarge, fontWeight: '700' },
   sub: { ...type.caption },
 });

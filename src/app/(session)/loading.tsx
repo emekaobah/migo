@@ -17,23 +17,35 @@ import { color, onNavy, space, type } from '@/theme';
  */
 export default function LoadingScreen() {
   const router = useRouter();
-  const { loanLoaded, loanTaken } = useLoan();
+  const { loanLoaded, loanTaken, offersLoaded } = useLoan();
 
   useEffect(() => {
     let active = true;
 
-    api
-      .getLoan()
-      .then((loan) => {
-        if (!active) return;
-        loanLoaded(loan);
-        router.replace(loan ? '/(loan)/active' : '/(loan)/offers');
-      })
-      .catch(() => {
-        // Offers are the safe landing: a borrower who cannot be shown their
-        // loan should not be stranded on a spinner.
-        if (active) router.replace('/(loan)/offers');
-      });
+    (async () => {
+      const loan = await api.getLoan();
+      if (!active) return;
+      loanLoaded(loan);
+
+      if (loan) {
+        router.replace('/(loan)/active');
+        return;
+      }
+
+      // The 1.8s this screen exists to cover. Fetching here rather than on
+      // `offers` is what keeps the spinner on the screen designed for it —
+      // `offers` renders with its data already in hand.
+      const offers = await api.getOffers();
+      if (!active) return;
+      offersLoaded(offers);
+      router.replace('/(loan)/offers');
+    })().catch(() => {
+      // Offers are the safe landing: a borrower who cannot be shown their loan
+      // should not be stranded on a spinner. `offers` re-fetches for itself
+      // when it arrives without data, so a failure here is recoverable rather
+      // than a dead end.
+      if (active) router.replace('/(loan)/offers');
+    });
 
     return () => {
       active = false;

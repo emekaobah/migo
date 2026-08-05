@@ -18,6 +18,15 @@ export type OfferSelection = {
   accountId: string;
 };
 
+/**
+ * What the borrower is approved for. Both halves come from the server together
+ * because an amount is only meaningful against the tenor's multiplier.
+ */
+export type Offers = {
+  tenors: Tenor[];
+  amounts: number[];
+};
+
 export type Loan = {
   id: string;
   principal: number;
@@ -78,7 +87,7 @@ export interface MigoApi {
    * mean rewriting the screen when a real backend arrives.
    */
   bindDevice(publicKey: string): Promise<{ ok: boolean; name: string }>;
-  getOffers(): Promise<{ tenors: Tenor[]; amounts: number[] }>;
+  getOffers(): Promise<Offers>;
   listAccounts(): Promise<PayoutAccount[]>;
   acceptLoan(selection: OfferSelection, signature: string): Promise<Loan>;
   getLoan(): Promise<Loan | null>;

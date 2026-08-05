@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
 
-import type { Loan, Tenor, WalletBank } from '@/api/types';
+import type { Loan, Offers, Tenor, WalletBank } from '@/api/types';
 
 /**
  * Loan domain state.
@@ -16,6 +16,15 @@ import type { Loan, Tenor, WalletBank } from '@/api/types';
 type LoanState = {
   loan: Loan | null;
   loanTaken: boolean;
+  /**
+   * What the borrower is approved for, as the server returned it.
+   *
+   * Held here rather than fetched by `offers` so the 1.8s `getOffers` call is
+   * covered by the `loading` screen that exists for it — a screen fetching its
+   * own hero data would show a second spinner behind the one the design
+   * already spent a screen on.
+   */
+  offers: Offers | null;
   /** Transient offer selections. */
   tenor: Tenor | null;
   principal: number | null;
@@ -28,6 +37,7 @@ type LoanState = {
 };
 
 type Action =
+  | { type: 'offersLoaded'; offers: Offers }
   | { type: 'selectTenor'; tenor: Tenor }
   | { type: 'selectPrincipal'; principal: number }
   | { type: 'chooseAccount'; accountId: string }
@@ -41,6 +51,7 @@ type Action =
 const INITIAL: LoanState = {
   loan: null,
   loanTaken: false,
+  offers: null,
   tenor: null,
   principal: null,
   accountId: null,
@@ -51,6 +62,8 @@ const INITIAL: LoanState = {
 
 function reducer(state: LoanState, action: Action): LoanState {
   switch (action.type) {
+    case 'offersLoaded':
+      return { ...state, offers: action.offers };
     case 'selectTenor':
       return { ...state, tenor: action.tenor };
     case 'selectPrincipal':
@@ -75,6 +88,7 @@ function reducer(state: LoanState, action: Action): LoanState {
 }
 
 type LoanContextValue = LoanState & {
+  offersLoaded: (offers: Offers) => void;
   selectTenor: (tenor: Tenor) => void;
   selectPrincipal: (principal: number) => void;
   chooseAccount: (accountId: string) => void;
@@ -94,6 +108,7 @@ export function LoanProvider({ children }: Readonly<{ children: ReactNode }>) {
   const value = useMemo<LoanContextValue>(
     () => ({
       ...state,
+      offersLoaded: (offers) => dispatch({ type: 'offersLoaded', offers }),
       selectTenor: (tenor) => dispatch({ type: 'selectTenor', tenor }),
       selectPrincipal: (principal) => dispatch({ type: 'selectPrincipal', principal }),
       chooseAccount: (accountId) => dispatch({ type: 'chooseAccount', accountId }),

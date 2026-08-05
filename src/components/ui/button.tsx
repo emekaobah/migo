@@ -5,6 +5,7 @@ import { buttonRadius, color, control, type } from '@/theme';
 export type ButtonVariant =
   | 'primary-amber'
   | 'primary-navy'
+  | 'success'
   | 'tonal'
   | 'outlined'
   | 'destructive'
@@ -29,6 +30,9 @@ type Props = Readonly<{
 const FILL: Partial<Record<ButtonVariant, { rest: string; pressed: string }>> = {
   'primary-amber': { rest: color.amber, pressed: color.amberPressed },
   'primary-navy': { rest: color.navy, pressed: color.navyPressed },
+  // Repaying is the affirmative money-moving action, and the design gives it
+  // the same green as the hold-to-accept sweep rather than the navy primary.
+  success: { rest: color.success, pressed: color.successPressed },
   tonal: { rest: color.surfaceAlt, pressed: color.surfaceAltPressed },
   destructive: { rest: color.danger, pressed: color.dangerPressed },
 };
@@ -36,6 +40,7 @@ const FILL: Partial<Record<ButtonVariant, { rest: string; pressed: string }>> = 
 const LABEL_COLOR: Record<ButtonVariant, string> = {
   'primary-amber': color.navy,
   'primary-navy': color.card,
+  success: color.card,
   destructive: color.card,
   tonal: color.navy,
   // Overridden to amber when sitting on a dark surface.
