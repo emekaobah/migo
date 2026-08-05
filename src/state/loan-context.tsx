@@ -45,7 +45,6 @@ type Action =
   | { type: 'loanLoaded'; loan: Loan | null }
   | { type: 'choosePayBank'; bank: WalletBank }
   | { type: 'walletSeen' }
-  | { type: 'paymentReceived' }
   | { type: 'reset' };
 
 const INITIAL: LoanState = {
@@ -78,10 +77,6 @@ function reducer(state: LoanState, action: Action): LoanState {
       return { ...state, payBank: action.bank, walletSeen: false };
     case 'walletSeen':
       return { ...state, walletSeen: true };
-    case 'paymentReceived':
-      return state.loan
-        ? { ...state, loan: { ...state.loan, paidCount: state.loan.paidCount + 1 } }
-        : state;
     case 'reset':
       return INITIAL;
   }
@@ -96,7 +91,6 @@ type LoanContextValue = LoanState & {
   loanLoaded: (loan: Loan | null) => void;
   choosePayBank: (bank: WalletBank) => void;
   markWalletSeen: () => void;
-  paymentReceived: () => void;
   reset: () => void;
 };
 
@@ -116,7 +110,6 @@ export function LoanProvider({ children }: Readonly<{ children: ReactNode }>) {
       loanLoaded: (loan) => dispatch({ type: 'loanLoaded', loan }),
       choosePayBank: (bank) => dispatch({ type: 'choosePayBank', bank }),
       markWalletSeen: () => dispatch({ type: 'walletSeen' }),
-      paymentReceived: () => dispatch({ type: 'paymentReceived' }),
       reset: () => dispatch({ type: 'reset' }),
     }),
     [state],
