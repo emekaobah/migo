@@ -70,7 +70,7 @@ describe('contract', () => {
     await expect(settle(api.getLoan(), 0)).resolves.not.toBeNull();
   });
 
-  it('quotes the wallet for the outstanding balance', async () => {
+  it('quotes the wallet for one instalment, matching what a payment clears', async () => {
     const accounts = await settle(api.listAccounts(), 300);
     const loan = await settle(
       api.acceptLoan({ tenor: TENORS[3], principal: 99_600, accountId: accounts[0].id }, 'sig'),
@@ -79,8 +79,25 @@ describe('contract', () => {
     const wallet = await settle(api.getWallet('sterling'), 700);
 
     expect(wallet.bank).toBe('sterling');
-    expect(wallet.amountDue).toBe(loan.total);
     expect(wallet.accountNumber).toMatch(/^\d{10}$/);
+
+    // The bug this guards: quoting the whole balance while `watchPayment`
+    // clears a single instalment, so a 3-payment borrower was told to transfer
+    // the entire debt and had one third of it marked paid.
+    expect(wallet.amountDue).toBe(loan.schedule[0].amount);
+    expect(wallet.amountDue).toBeLessThan(loan.total);
+
+    await settle(api.watchPayment(wallet).promise, LATENCY.watchPayment);
+    const after = await settle(api.getLoan(), LATENCY.getLoan);
+
+    // What was quoted is what came off the balance.
+    expect(outstandingAfter(after!.schedule, after!.paidCount)).toBe(
+      loan.total - wallet.amountDue,
+    );
+  });
+
+  it('quotes no extension when there is no loan', async () => {
+    await expect(settle(api.quoteExtension(), LATENCY.getLoan)).resolves.toBeNull();
   });
 
   it('rejects extending when there is no loan', async () => {
@@ -100,6 +117,49 @@ describe('extendLoan', () => {
     await settle(api.watchPayment(wallet).promise, LATENCY.watchPayment);
     return settle(api.getLoan(), LATENCY.getLoan);
   }
+
+  it('applies exactly what it quoted', async () => {
+    const before = await loanWithOnePaid();
+
+    const quote = await settle(api.quoteExtension(), LATENCY.getLoan);
+    const after = await settle(api.extendLoan(quote!.pct), LATENCY.extendLoan);
+
+    // The quote reads the balance the loan actually carries, so the screen's
+    // three figures come from one source and add up.
+    expect(quote!.outstanding).toBe(outstandingAfter(before!.schedule, before!.paidCount));
+    expect(quote!.payToday + quote!.carried).toBe(quote!.outstanding);
+
+    // `total` is lifetime cost, not a schedule sum — the mock derives it as
+    // `alreadyRepaid + payToday + newOutstanding` precisely because slicing the
+    // schedule breaks from the second extension on. That derivation is the
+    // part most able to drift silently, so pin it.
+    expect(after.total).toBe(before!.total - quote!.carried + quote!.newOutstanding);
+
+    // The whole reason `quoteExtension` and `extendLoan` share one code path.
+    // A quote that drifts from what is charged is the borrower agreeing to one
+    // set of terms and being given another — and it would drift silently,
+    // because nothing else compares the two.
+    expect(after.schedule).toHaveLength(1);
+    expect(after.schedule[0].amount).toBe(quote!.newOutstanding);
+    expect(after.schedule[0].dueAt.getTime()).toBe(quote!.newDueAt.getTime());
+    expect(after.extendedTo?.getTime()).toBe(quote!.newDueAt.getTime());
+  });
+
+  it('quotes the published terms — 30% carried 30 days', async () => {
+    await loanWithOnePaid();
+    const before = await settle(api.getLoan(), LATENCY.getLoan);
+    const outstanding = outstandingAfter(before!.schedule, before!.paidCount);
+
+    const quote = await settle(api.quoteExtension(), LATENCY.getLoan);
+
+    // Client-confirmed 2026-08-02, superseding the handoff's 20%/same-duration
+    // (PLAN §5). The screen renders `pct` directly, so this is the figure a
+    // borrower reads as "Pay today (30%)".
+    expect(quote!.pct).toBe(0.3);
+    expect(quote!.days).toBe(30);
+    expect(quote!.payToday).toBe(Math.round(outstanding * 0.3));
+    expect(quote!.payToday + quote!.carried).toBe(outstanding);
+  });
 
   it('applies the extension rather than only recording it', async () => {
     const before = await loanWithOnePaid();

@@ -48,7 +48,38 @@ export type Wallet = {
   bank: WalletBank;
   accountNumber: string;
   accountName: string;
+  /** This instalment, not the whole balance — see `getWallet` in the mock. */
   amountDue: number;
+};
+
+/**
+ * What an extension would cost, quoted before the borrower commits to it.
+ *
+ * The terms come back with the figures deliberately. `pct` and `days` are
+ * business inputs that will change, and the `extend` screen has to render
+ * "Pay today (30%)" and a new due date — so it needs the numbers themselves,
+ * not just the result. Sending them over the interface is what keeps a rate out
+ * of a screen and out of reach of `api/mock/`, which no screen may import
+ * (PLAN §2).
+ */
+export type ExtensionQuote = {
+  /** Fraction of the outstanding payable today, e.g. `0.3`. */
+  pct: number;
+  /** How long the remainder carries. */
+  days: number;
+  /**
+   * Owed before the extension is applied. `payToday + carried` equals this.
+   *
+   * Quoted rather than left to the caller so all three figures on the screen
+   * come from one reading of the balance — deriving this from a client-side
+   * loan snapshot lets "You owe now" disagree with the split beneath it.
+   */
+  outstanding: number;
+  payToday: number;
+  carried: number;
+  /** Owed on the carried amount once the extension rate is applied. */
+  newOutstanding: number;
+  newDueAt: Date;
 };
 
 export type PaymentEvent = {
@@ -93,5 +124,10 @@ export interface MigoApi {
   getLoan(): Promise<Loan | null>;
   getWallet(bank: WalletBank): Promise<Wallet>;
   watchPayment(wallet: Wallet): Cancellable<PaymentEvent>;
+  /**
+   * What extending would cost, without committing to it. Returns null when
+   * there is no loan to extend.
+   */
+  quoteExtension(): Promise<ExtensionQuote | null>;
   extendLoan(pct: number): Promise<Loan>;
 }

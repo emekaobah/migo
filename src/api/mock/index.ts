@@ -1,7 +1,14 @@
-import { buildSchedule, computeExtension, outstandingAfter, totalRepayable } from '@/lib/loan-math';
+import {
+  buildSchedule,
+  computeExtension,
+  nextInstalment,
+  outstandingAfter,
+  totalRepayable,
+} from '@/lib/loan-math';
 
 import type {
   Cancellable,
+  ExtensionQuote,
   Loan,
   MigoApi,
   OfferSelection,
@@ -36,6 +43,27 @@ import {
 
 /** The single loan this build tracks. Server state stands in for a database. */
 let currentLoan: Loan | null = null;
+
+/**
+ * The one place an extension is computed.
+ *
+ * `quoteExtension` and `extendLoan` both go through here so the figures the
+ * borrower agrees to are, by construction, the figures that get applied. Two
+ * call sites doing the same arithmetic separately is exactly how a quote and a
+ * charge drift apart.
+ */
+function extensionFor(loan: Loan, pct: number) {
+  const outstanding = outstandingAfter(loan.schedule, loan.paidCount);
+  // Extend from the date being extended past, not from today and not from the
+  // loan's original maturity — extending a loan already late gives 30 days from
+  // the missed date. `loan-math` documents and tests this.
+  const extendFrom = nextInstalment(loan.schedule, loan.paidCount)?.dueAt ?? new Date();
+
+  return {
+    outstanding,
+    ...computeExtension(outstanding, pct, EXTENSION.days, EXTENSION.rate, extendFrom),
+  };
+}
 
 export const mockApi: MigoApi = {
   async requestCode() {
@@ -85,15 +113,22 @@ export const mockApi: MigoApi = {
     return after(LATENCY.getLoan, currentLoan);
   },
 
+  /**
+   * The wallet quotes **one instalment**, not the whole balance.
+   *
+   * It previously quoted the full outstanding while `watchPayment` cleared a
+   * single instalment — so a 3-payment borrower was told to transfer the entire
+   * debt and had one third of it marked paid. The two must describe the same
+   * payment, and the handoff's `repay` copy ("Pay ₦X" above "Remaining after
+   * this payment: ₦Y") is explicit that X is the instalment.
+   */
   async getWallet(bank: WalletBank): Promise<Wallet> {
-    const outstanding = currentLoan
-      ? outstandingAfter(currentLoan.schedule, currentLoan.paidCount)
-      : 0;
+    const due = currentLoan ? nextInstalment(currentLoan.schedule, currentLoan.paidCount) : null;
 
     return after(LATENCY.getWallet, {
       bank,
       ...WALLETS[bank],
-      amountDue: outstanding,
+      amountDue: due?.amount ?? 0,
     });
   },
 
@@ -129,22 +164,32 @@ export const mockApi: MigoApi = {
    * old debt would leave `outstandingAfter` quoting the pre-extension figure,
    * and the `active` screen reads exactly that.
    */
-  async extendLoan(pct: number = EXTENSION.pct): Promise<Loan> {
+  async quoteExtension(): Promise<ExtensionQuote | null> {
+    if (!currentLoan) return after(LATENCY.getLoan, null);
+
+    const { outstanding, payToday, carried, newOutstanding, newDueAt } = extensionFor(
+      currentLoan,
+      EXTENSION.pct,
+    );
+
+    return after(LATENCY.getLoan, {
+      pct: EXTENSION.pct,
+      days: EXTENSION.days,
+      outstanding,
+      payToday,
+      carried,
+      newOutstanding,
+      newDueAt,
+    });
+  },
+
+  // No default for `pct`: `MigoApi` declares it required, so a default here is
+  // unreachable through the typed `api` object — dead code that reads like a
+  // fallback. Callers pass the `pct` their quote was priced at.
+  async extendLoan(pct: number): Promise<Loan> {
     if (!currentLoan) throw new Error('no loan to extend');
 
-    const outstanding = outstandingAfter(currentLoan.schedule, currentLoan.paidCount);
-    // Extend from the date being extended past, not from today and not from the
-    // loan's original maturity — extending a loan already late gives 30 days
-    // from the missed date. `loan-math` documents and tests this.
-    const nextDue = currentLoan.schedule[currentLoan.paidCount]?.dueAt ?? new Date();
-
-    const extension = computeExtension(
-      outstanding,
-      pct,
-      EXTENSION.days,
-      EXTENSION.rate,
-      nextDue,
-    );
+    const { outstanding, ...extension } = extensionFor(currentLoan, pct);
 
     // Everything paid across the loan's whole life, including any earlier
     // extension's `payToday`. Deriving this by slicing the schedule looks
