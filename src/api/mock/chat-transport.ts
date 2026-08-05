@@ -26,7 +26,12 @@ export function createMockChatTransport(getFacts: () => ChatFacts): ChatTranspor
   let pending: { cancel: () => void } | null = null;
   let seq = 0;
 
-  const nextId = () => `msg-${(seq += 1)}`;
+  // The increment is its own statement. Folding `seq += 1` into the template
+  // hid a mutation inside an expression that reads as pure formatting.
+  const nextId = () => {
+    seq += 1;
+    return `msg-${seq}`;
+  };
 
   const push = (message: ChatMessage) => {
     log = [...log, message];
