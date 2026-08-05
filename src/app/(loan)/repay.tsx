@@ -34,7 +34,9 @@ export default function RepayScreen() {
 
   function onContinue() {
     if (!selected) {
-      setError('Pick the bank you want to transfer from.');
+      // The list chooses where Migo *opens* the wallet, not where the money
+      // comes from. "Transfer from" named the opposite account.
+      setError('Pick the bank you want your wallet opened at.');
       return;
     }
 

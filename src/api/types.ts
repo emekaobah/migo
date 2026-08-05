@@ -67,6 +67,14 @@ export type ExtensionQuote = {
   pct: number;
   /** How long the remainder carries. */
   days: number;
+  /**
+   * Owed before the extension is applied. `payToday + carried` equals this.
+   *
+   * Quoted rather than left to the caller so all three figures on the screen
+   * come from one reading of the balance — deriving this from a client-side
+   * loan snapshot lets "You owe now" disagree with the split beneath it.
+   */
+  outstanding: number;
   payToday: number;
   carried: number;
   /** Owed on the carried amount once the extension rate is applied. */

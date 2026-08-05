@@ -167,7 +167,7 @@ export const mockApi: MigoApi = {
   async quoteExtension(): Promise<ExtensionQuote | null> {
     if (!currentLoan) return after(LATENCY.getLoan, null);
 
-    const { payToday, carried, newOutstanding, newDueAt } = extensionFor(
+    const { outstanding, payToday, carried, newOutstanding, newDueAt } = extensionFor(
       currentLoan,
       EXTENSION.pct,
     );
@@ -175,6 +175,7 @@ export const mockApi: MigoApi = {
     return after(LATENCY.getLoan, {
       pct: EXTENSION.pct,
       days: EXTENSION.days,
+      outstanding,
       payToday,
       carried,
       newOutstanding,
@@ -182,7 +183,10 @@ export const mockApi: MigoApi = {
     });
   },
 
-  async extendLoan(pct: number = EXTENSION.pct): Promise<Loan> {
+  // No default for `pct`: `MigoApi` declares it required, so a default here is
+  // unreachable through the typed `api` object — dead code that reads like a
+  // fallback. Callers pass the `pct` their quote was priced at.
+  async extendLoan(pct: number): Promise<Loan> {
     if (!currentLoan) throw new Error('no loan to extend');
 
     const { outstanding, ...extension } = extensionFor(currentLoan, pct);

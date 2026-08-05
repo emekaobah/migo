@@ -5,10 +5,7 @@ import { Card } from '@/components/ui';
 import { accountNumber } from '@/lib/format';
 import { color, onNavy, space, type } from '@/theme';
 
-const BANK_NAMES: Record<Wallet['bank'], string> = {
-  sterling: 'Sterling Bank',
-  fidelity: 'Fidelity Bank',
-};
+import { WALLET_BANKS } from './banks';
 
 type Props = Readonly<{ wallet: Wallet }>;
 
@@ -37,7 +34,7 @@ export function WalletCard({ wallet }: Props) {
       <View style={styles.divider} />
 
       <Text style={styles.name}>{wallet.accountName}</Text>
-      <Text style={styles.bank}>{BANK_NAMES[wallet.bank]}</Text>
+      <Text style={styles.bank}>{WALLET_BANKS[wallet.bank]}</Text>
     </Card>
   );
 }

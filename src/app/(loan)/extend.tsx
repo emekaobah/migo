@@ -1,12 +1,11 @@
 import { Redirect, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
 import type { ExtensionQuote } from '@/api/types';
 import { Amount, Button, Card, HeaderRow, InlineError, Row, Screen, Spinner } from '@/components/ui';
 import { fullDate, naira } from '@/lib/format';
-import { outstandingAfter } from '@/lib/loan-math';
 import { useLoan } from '@/state/loan-context';
 import { color, space, type } from '@/theme';
 
@@ -31,6 +30,17 @@ export default function ExtendScreen() {
   const [error, setError] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Synchronous submit latch — see `onExtend`. */
+  const submitting = useRef(false);
+  /** Guards the post-await writes; extending is not cancellable mid-flight. */
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (failed) return;
@@ -52,11 +62,15 @@ export default function ExtendScreen() {
 
   if (!loan) return <Redirect href="/(loan)/offers" />;
 
-  const outstanding = outstandingAfter(loan.schedule, loan.paidCount);
-
   async function onExtend() {
-    if (!quote || busy) return;
+    // A ref, not `busy`: state read from this closure is stale until the next
+    // render commits, so two presses inside one frame would both pass the
+    // guard and both call `extendLoan` — which applies a *second* extension,
+    // replacing the schedule again and charging `payToday` twice. `HoldButton`
+    // latches for the same reason on `confirm`.
+    if (!quote || submitting.current) return;
 
+    submitting.current = true;
     setBusy(true);
     setError(null);
 
@@ -64,9 +78,12 @@ export default function ExtendScreen() {
       // The quote carries the pct it was priced at, so what gets applied is
       // what was shown — not a constant this screen happens to hold.
       const extended = await api.extendLoan(quote.pct);
+      if (!mounted.current) return;
       loanLoaded(extended);
       router.replace('/(loan)/active');
     } catch {
+      submitting.current = false;
+      if (!mounted.current) return;
       setError('We could not extend this just now. Try again.');
       setBusy(false);
     }
@@ -94,7 +111,7 @@ export default function ExtendScreen() {
         <>
           <Card tone="tonal">
             <Text style={styles.owedLabel}>You owe now</Text>
-            <Amount value={naira(outstanding)} size="h2" />
+            <Amount value={naira(quote.outstanding)} size="h2" />
           </Card>
 
           <View style={styles.hero}>

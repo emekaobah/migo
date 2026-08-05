@@ -119,10 +119,21 @@ describe('extendLoan', () => {
   }
 
   it('applies exactly what it quoted', async () => {
-    await loanWithOnePaid();
+    const before = await loanWithOnePaid();
 
     const quote = await settle(api.quoteExtension(), LATENCY.getLoan);
     const after = await settle(api.extendLoan(quote!.pct), LATENCY.extendLoan);
+
+    // The quote reads the balance the loan actually carries, so the screen's
+    // three figures come from one source and add up.
+    expect(quote!.outstanding).toBe(outstandingAfter(before!.schedule, before!.paidCount));
+    expect(quote!.payToday + quote!.carried).toBe(quote!.outstanding);
+
+    // `total` is lifetime cost, not a schedule sum — the mock derives it as
+    // `alreadyRepaid + payToday + newOutstanding` precisely because slicing the
+    // schedule breaks from the second extension on. That derivation is the
+    // part most able to drift silently, so pin it.
+    expect(after.total).toBe(before!.total - quote!.carried + quote!.newOutstanding);
 
     // The whole reason `quoteExtension` and `extendLoan` share one code path.
     // A quote that drifts from what is charged is the borrower agreeing to one
