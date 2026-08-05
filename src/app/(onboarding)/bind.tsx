@@ -9,6 +9,7 @@ import { authenticate, capability } from '@/lib/biometrics';
 import { error as errorHaptic, success, tick } from '@/lib/haptics';
 import { PIN_LENGTH, setPin } from '@/lib/secure-pin';
 import { useAuth } from '@/state/auth-context';
+import { useNavOrigin } from '@/state/nav-origin';
 import { biometric, space, type } from '@/theme';
 
 const UNAVAILABLE: Record<'no-hardware' | 'not-enrolled', string> = {
@@ -37,6 +38,7 @@ export default function BindScreen() {
   // has no `disabled` prop by design, so nothing else stops it.
   const running = useRef(false);
   const router = useRouter();
+  const { openHelpFrom } = useNavOrigin();
   const auth = useAuth();
 
   useEffect(() => {
@@ -117,7 +119,20 @@ export default function BindScreen() {
 
   return (
     <Screen surface="surface" scroll>
-      <HeaderRow variant="step" step="Step 2 of 2" onHelp={() => router.push('/(support)/help')} />
+      {/*
+        Records the origin before opening Help. Every other entry point does;
+        this one did not, so Help opened from `bind` used to return to whichever
+        screen last set the value — the exact "derive it instead of storing it"
+        defect the handoff attributes four bugs to (PLAN §3.3).
+      */}
+      <HeaderRow
+        variant="step"
+        step="Step 2 of 2"
+        onHelp={() => {
+          openHelpFrom('/(onboarding)/bind');
+          router.push('/(support)/help');
+        }}
+      />
 
       <View style={styles.body}>
         <Text style={type.h1Small}>Choose how you&apos;ll sign in</Text>
