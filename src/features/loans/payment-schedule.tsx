@@ -45,6 +45,11 @@ export function PaymentSchedule({ schedule, paidCount }: Props) {
           <View
             key={instalment.index}
             style={[styles.row, i > 0 && styles.divided]}
+            // `accessible` is what makes the composed label win. Without it
+            // VoiceOver reads each child `Text` separately and drops the label
+            // entirely — so the status *word*, the thing that keeps this from
+            // being colour-only, never reaches the borrower.
+            accessible
             accessibilityLabel={`Payment ${instalment.index}, ${naira(instalment.amount)}, due ${shortDate(instalment.dueAt)}, ${status}`}
           >
             <View style={styles.text}>

@@ -20,12 +20,21 @@ export default function SuccessScreen() {
 
   if (!loan) return <Redirect href="/(loan)/offers" />;
 
-  const last = loan.schedule[loan.schedule.length - 1];
+  // `.at(-1)` is `Instalment | undefined`, and that is the point: a loan with an
+  // empty schedule would have crashed the index form on `.dueAt`. The summary
+  // line is the only thing that needs it, so it is what gets guarded.
+  const last = loan.schedule.at(-1);
 
   return (
     <Screen surface="success">
       <View style={styles.body}>
-        <View style={styles.check}>
+        {/* Decorative. The copy below states the outcome, so announcing
+            "check mark" first only delays it. */}
+        <View
+          style={styles.check}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           <Text style={styles.tick}>✓</Text>
         </View>
 
@@ -35,12 +44,14 @@ export default function SuccessScreen() {
 
         <Amount value={naira(loan.principal)} size="displayLarge" onDark />
 
-        <Text style={styles.summary}>
-          You repay {naira(loan.total)}
-          {loan.schedule.length > 1
-            ? ` across ${loan.schedule.length} payments, ending ${fullDate(last.dueAt)}`
-            : ` on ${fullDate(last.dueAt)}`}
-        </Text>
+        {last ? (
+          <Text style={styles.summary}>
+            You repay {naira(loan.total)}
+            {loan.schedule.length > 1
+              ? ` across ${loan.schedule.length} payments, ending ${fullDate(last.dueAt)}`
+              : ` on ${fullDate(last.dueAt)}`}
+          </Text>
+        ) : null}
       </View>
 
       {/*

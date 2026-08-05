@@ -88,8 +88,10 @@ async function renderScreen() {
     </SafeAreaProvider>,
   );
 
-  // Let the account fetch and the capability probe settle before the hold, so
-  // the assertions are against the screen a borrower actually sees.
+  // Waiting for the hold button *is* waiting for both probes: the screen does
+  // not render it until the capability check and the account lookup have both
+  // reported. That is a property worth relying on, and `does not offer the hold
+  // until both probes have settled` below is what keeps it true.
   await waitFor(() => expect(utils.queryByTestId('hold-to-accept')).not.toBeNull());
   return utils;
 }
@@ -100,7 +102,7 @@ async function renderScreen() {
  * on `pressIn`. This mirrors the component-level pattern in
  * `conventions.test.tsx`.
  */
-function useFakeTimersAfterRender() {
+function installFakeTimers() {
   jest.useFakeTimers({
     doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick', 'performance'],
   });
@@ -131,7 +133,7 @@ describe('confirm', () => {
   it('re-asserts the biometric and accepts the loan on a completed hold', async () => {
     localAuthMock.setScenario('success');
     const { getByTestId } = await renderScreen();
-    useFakeTimersAfterRender();
+    installFakeTimers();
 
     await fireEvent(getByTestId('hold-to-accept'), 'pressIn');
     await act(async () => {
@@ -152,7 +154,7 @@ describe('confirm', () => {
   it('does not accept when the biometric is refused, and leaves a live control', async () => {
     localAuthMock.setScenario('failure');
     const { getByTestId, queryByText } = await renderScreen();
-    useFakeTimersAfterRender();
+    installFakeTimers();
 
     await fireEvent(getByTestId('hold-to-accept'), 'pressIn');
     await act(async () => {
@@ -172,7 +174,7 @@ describe('confirm', () => {
   it('releasing early neither accepts nor accumulates across attempts', async () => {
     localAuthMock.setScenario('success');
     const { getByTestId } = await renderScreen();
-    useFakeTimersAfterRender();
+    installFakeTimers();
 
     await fireEvent(getByTestId('hold-to-accept'), 'pressIn');
     await act(async () => {
@@ -192,12 +194,59 @@ describe('confirm', () => {
     expect(api.acceptLoan as jest.Mock).not.toHaveBeenCalled();
   });
 
+  it('does not offer the hold until both probes have settled', async () => {
+    localAuthMock.setScenario('success');
+
+    /*
+     * Held pending for the whole test. Two things make this necessary:
+     * the mocks otherwise resolve before `render` returns, so the unsettled
+     * frame is unobservable; and `mockReturnValueOnce` is not enough, because
+     * the account effect runs twice — once at `accountId: null`, then again
+     * once `Seed` chooses one.
+     *
+     * That unsettled frame is exactly what this guards. If the hold existed
+     * while a probe was outstanding, a fast borrower could complete it with
+     * `bioAvailable` still null, skipping the biometric re-assert while the
+     * caption below claimed one had happened.
+     */
+    const listAccounts = api.listAccounts as jest.Mock;
+    const settled = listAccounts.getMockImplementation();
+    listAccounts.mockImplementation(() => new Promise(() => {}));
+
+    try {
+      const { queryByTestId, queryByText } = await render(
+        <SafeAreaProvider
+          initialMetrics={{
+            frame: { x: 0, y: 0, width: 393, height: 852 },
+            insets: { top: 47, left: 0, right: 0, bottom: 34 },
+          }}
+        >
+          <AuthProvider>
+            <LoanProvider>
+              <Seed />
+              <ConfirmScreen />
+            </LoanProvider>
+          </AuthProvider>
+        </SafeAreaProvider>,
+      );
+
+      expect(queryByTestId('hold-to-accept')).toBeNull();
+      // And no signing caption either — it must never describe a state that
+      // has not been determined.
+      expect(queryByText(/Signed/)).toBeNull();
+    } finally {
+      // `jest.clearAllMocks()` in setup.ts clears calls, not implementations,
+      // so this has to be put back by hand or every later test hangs.
+      listAccounts.mockImplementation(settled!);
+    }
+  });
+
   it('still lets a handset without a sensor take the loan, and says so honestly', async () => {
     localAuthMock.setScenario('no-hardware');
     const { getByTestId, queryByText } = await renderScreen();
 
     await waitFor(() => expect(queryByText('Signed on this device')).not.toBeNull());
-    useFakeTimersAfterRender();
+    installFakeTimers();
 
     await fireEvent(getByTestId('hold-to-accept'), 'pressIn');
     await act(async () => {

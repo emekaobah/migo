@@ -47,6 +47,8 @@ export default function ConfirmScreen() {
    * stays true either way.
    */
   const [bioAvailable, setBioAvailable] = useState<boolean | null>(null);
+  /** Whether the account lookup has finished — `account` alone cannot say. */
+  const [accountSettled, setAccountSettled] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -70,10 +72,14 @@ export default function ConfirmScreen() {
     api
       .listAccounts()
       .then((list) => {
-        if (active) setAccount(list.find((a) => a.id === accountId) ?? list[0] ?? null);
+        if (!active) return;
+        setAccount(list.find((a) => a.id === accountId) ?? list[0] ?? null);
+        setAccountSettled(true);
       })
       .catch(() => {
-        if (active) setAccount(null);
+        if (!active) return;
+        setAccount(null);
+        setAccountSettled(true);
       });
 
     return () => {
@@ -89,9 +95,21 @@ export default function ConfirmScreen() {
   const total = totalRepayable(principal, tenor.multiplier);
   const schedule = buildSchedule(principal, tenor, new Date());
   const interest = total - principal;
+  /** Both async probes have reported, so the hold can mean what it says. */
+  const ready = bioAvailable !== null && accountSettled;
 
   async function onAccept() {
     if (!tenor || !principal) return;
+
+    // A loan must not be accepted without a destination. `accountId: ''` would
+    // submit a disbursement with nowhere to send it, and the "Paid into" row
+    // reads "—" at that moment, so the borrower would also be confirming a
+    // destination they were never shown.
+    if (!account) {
+      setError('We could not confirm your payout account. Choose one and hold again.');
+      setAttempt((n) => n + 1);
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -108,7 +126,7 @@ export default function ConfirmScreen() {
       }
 
       const loan = await api.acceptLoan(
-        { tenor, principal, accountId: account?.id ?? '' },
+        { tenor, principal, accountId: account.id },
         // A placeholder, exactly as `bind` passes one. Without a backend there
         // is nothing to verify a signature against, and PLAN §7 is explicit
         // that unverifiable attestation is theatre better named than implied.
@@ -178,10 +196,20 @@ export default function ConfirmScreen() {
       <View style={styles.footer}>
         {error ? <InlineError message={error} /> : null}
 
-        {busy ? (
+        {/*
+          The hold does not exist until both probes have settled.
+
+          Rendering it while `bioAvailable` is still null let a fast hold slip
+          through the window where null reads as false — skipping `authenticate`
+          entirely while the caption below still claimed the loan was signed
+          with a fingerprint. Withholding the control is better than gating
+          inside the handler: there is then no window at all, and the caption
+          can only ever describe a state that has actually been determined.
+        */}
+        {busy || !ready ? (
           <View style={styles.busy}>
             <Spinner size={32} />
-            <Text style={styles.busyLabel}>Sending your money…</Text>
+            {busy ? <Text style={styles.busyLabel}>Sending your money…</Text> : null}
           </View>
         ) : (
           <>

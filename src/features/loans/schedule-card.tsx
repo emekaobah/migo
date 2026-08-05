@@ -26,6 +26,9 @@ export function ScheduleCard({ schedule, title = 'Repayment schedule' }: Props) 
         <View
           key={instalment.index}
           style={[styles.row, i > 0 && styles.divided]}
+          // See `payment-schedule.tsx` — a label on a non-accessible View is
+          // read past, not read out.
+          accessible
           accessibilityLabel={`Payment ${instalment.index} of ${schedule.length}, ${naira(instalment.amount)}, due ${shortDate(instalment.dueAt)}`}
         >
           <Text style={styles.label}>

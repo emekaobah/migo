@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import OffersScreen from '@/app/(loan)/offers';
+import { api } from '@/api/client';
 import { AuthProvider } from '@/state/auth-context';
 import { LoanProvider, useLoan } from '@/state/loan-context';
 
@@ -27,6 +28,8 @@ const mockOffers = {
 jest.mock('@/api/client', () => ({
   api: { getOffers: jest.fn(async () => mockOffers) },
 }));
+
+const getOffers = () => api.getOffers as jest.Mock;
 
 /** Puts the provider into a state the screen cannot reach on its own. */
 function Seed({ accountId }: Readonly<{ accountId?: string }>) {
@@ -129,6 +132,25 @@ describe('offers', () => {
     await fireEvent.press(getByText('Continue'));
 
     expect(mockPush).toHaveBeenCalledWith('/(loan)/banks');
+  });
+
+  it('offers a retry when the fetch fails, rather than an empty screen', async () => {
+    // `loading` normally supplies these, and falls through to this screen when
+    // it cannot. Without the retry the borrower would be left on a permanent
+    // spinner with no way to recover.
+    getOffers().mockRejectedValueOnce(new Error('offline'));
+
+    const { getByText, queryByText, getByLabelText } = await renderScreen();
+
+    await waitFor(() => expect(queryByText(/could not load your offers/i)).not.toBeNull());
+    expect(queryByText('How long do you need it?')).toBeNull();
+
+    await fireEvent.press(getByText('Try again'));
+
+    // The retry re-runs the effect, and the second call resolves.
+    await waitFor(() => expect(getByLabelText('14 days, 1 payment')).toBeTruthy());
+    expect(queryByText(/could not load your offers/i)).toBeNull();
+    expect(getOffers()).toHaveBeenCalledTimes(2);
   });
 
   it('skips straight to confirm once an account has been chosen', async () => {

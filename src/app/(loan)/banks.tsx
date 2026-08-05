@@ -24,8 +24,13 @@ export default function BanksScreen() {
   const [accounts, setAccounts] = useState<PayoutAccount[] | null>(null);
   const [selected, setSelected] = useState<string | null>(accountId);
   const [error, setError] = useState<string | null>(null);
+  // A failed fetch is not an empty list. Collapsing the two renders an empty
+  // radio group with no explanation, and the only CTA then asks the borrower to
+  // pick from nothing — a dead end with no way back out.
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    if (failed) return;
     let active = true;
 
     api
@@ -34,13 +39,13 @@ export default function BanksScreen() {
         if (active) setAccounts(list);
       })
       .catch(() => {
-        if (active) setAccounts([]);
+        if (active) setFailed(true);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [failed]);
 
   function onUse() {
     if (!selected) {
@@ -58,11 +63,20 @@ export default function BanksScreen() {
       <HeaderRow variant="back" onBack={() => router.back()} />
       <Text style={styles.h1}>Where should the money go?</Text>
 
-      {accounts === null ? (
+      {failed ? (
+        <View style={styles.pending}>
+          <InlineError message="We could not load your accounts. Check your connection." />
+          <Button label="Try again" onPress={() => setFailed(false)} variant="tonal" />
+        </View>
+      ) : null}
+
+      {!failed && accounts === null ? (
         <View style={styles.pending}>
           <Spinner />
         </View>
-      ) : (
+      ) : null}
+
+      {!failed && accounts !== null ? (
         <>
           <View style={styles.list} accessibilityRole="radiogroup">
             {accounts.map((account) => (
@@ -81,12 +95,19 @@ export default function BanksScreen() {
             Only an account in your own name can receive a Migo loan.
           </Text>
         </>
-      )}
+      ) : null}
 
-      <View style={styles.footer}>
-        {error ? <InlineError message={error} /> : null}
-        <Button label="Use this account" onPress={onUse} />
-      </View>
+      {/*
+        No CTA while the list is missing. "Use this account" over a failed fetch
+        can only ever answer "pick one" — which is not something the borrower
+        can do, and not what went wrong.
+      */}
+      {failed ? null : (
+        <View style={styles.footer}>
+          {error ? <InlineError message={error} /> : null}
+          <Button label="Use this account" onPress={onUse} />
+        </View>
+      )}
     </Screen>
   );
 }

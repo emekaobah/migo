@@ -63,9 +63,15 @@ export default function OffersScreen() {
 
   const total = tenor && principal ? totalRepayable(principal, tenor.multiplier) : null;
 
+  // Frozen for the visit. Reading `new Date()` inside the memo factory made it
+  // impure: React may discard and re-run a memo at any time, and Strict Mode
+  // does it twice on mount, so each run would seed the schedule from a new
+  // "now" and the quoted dates could shift under the borrower across midnight.
+  const [origin] = useState(() => new Date());
+
   const schedule = useMemo(
-    () => (tenor && principal ? buildSchedule(principal, tenor, new Date()) : null),
-    [tenor, principal],
+    () => (tenor && principal ? buildSchedule(principal, tenor, origin) : null),
+    [tenor, principal, origin],
   );
 
   function onContinue() {

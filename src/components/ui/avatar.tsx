@@ -14,7 +14,7 @@ export function initials(name: string): string {
   if (parts.length === 0) return '';
 
   const first = parts[0].charAt(0);
-  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  const last = parts.length > 1 ? (parts.at(-1)?.charAt(0) ?? '') : '';
   return (first + last).toUpperCase();
 }
 
@@ -43,6 +43,9 @@ export function Avatar({ name, size = 48, onPress, style, testID }: Props) {
   const { disc, fontSize } = SIZES[size];
   const shape = { width: disc, height: disc, borderRadius: disc / 2 };
   const label = <Text style={[styles.initials, { fontSize }]}>{initials(name)}</Text>;
+  // Callers pass `name ?? ''` while the profile is still loading, and
+  // "Account, " announces a trailing comma and then nothing.
+  const trimmed = name.trim();
 
   if (!onPress) {
     return (
@@ -56,7 +59,7 @@ export function Avatar({ name, size = 48, onPress, style, testID }: Props) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Account, ${name}`}
+      accessibilityLabel={trimmed ? `Account, ${trimmed}` : 'Account'}
       testID={testID}
       style={({ pressed }) => [
         styles.disc,
