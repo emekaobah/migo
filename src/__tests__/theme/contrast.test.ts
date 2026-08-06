@@ -140,21 +140,38 @@ describe('the two colours the handoff forbids', () => {
  * one-off script, and flagged in the accessibility report for a design call.
  */
 describe('pressed-state separation (recorded, not a gate)', () => {
-  it('reports how perceptible each pressed state is', () => {
-    const pressed = {
-      'navy → navyPressed': contrast(color.navy, color.navyPressed),
-      'card → cardPressed': contrast(color.card, color.cardPressed),
-      'surfaceAlt → surfaceAltPressed': contrast(color.surfaceAlt, color.surfaceAltPressed),
-      'amber → amberPressed': contrast(color.amber, color.amberPressed),
-      'success → successPressed': contrast(color.success, color.successPressed),
-      'danger → dangerPressed': contrast(color.danger, color.dangerPressed),
-    };
+  /**
+   * The measured values, pinned.
+   *
+   * An earlier version computed these and asserted only `> 1`, which let a
+   * ratio fall from 1.09 to 1.001 without failing — so the numbers were not
+   * actually recorded anywhere, despite the comment saying they were. Pinning
+   * them means weakening a pressed state is a deliberate edit to this table
+   * rather than something that happens quietly.
+   *
+   * These are **not** a WCAG gate. Press feedback needs no contrast ratio
+   * against its resting state, and the action confirms the press. They are here
+   * because the handoff asks for pressed states everywhere and 1.09 is close to
+   * invisible on the low-end screens PLAN §8 calls the actual market — see
+   * docs/ACCESSIBILITY.md, open finding B.
+   */
+  const MEASURED: Readonly<Record<string, number>> = {
+    'navy → navyPressed': 1.09,
+    'card → cardPressed': 1.15,
+    'surfaceAlt → surfaceAltPressed': 1.19,
+    'amber → amberPressed': 1.27,
+    'success → successPressed': 1.35,
+    'danger → dangerPressed': 1.36,
+  };
 
-    // Every one of them is a real, non-zero change — the assertion that would
-    // actually catch a regression is "the pressed colour is not the resting
-    // colour", which is what this checks.
-    Object.entries(pressed).forEach(([, ratio]) => {
-      expect(ratio).toBeGreaterThan(1);
-    });
+  it.each([
+    ['navy → navyPressed', color.navy, color.navyPressed],
+    ['card → cardPressed', color.card, color.cardPressed],
+    ['surfaceAlt → surfaceAltPressed', color.surfaceAlt, color.surfaceAltPressed],
+    ['amber → amberPressed', color.amber, color.amberPressed],
+    ['success → successPressed', color.success, color.successPressed],
+    ['danger → dangerPressed', color.danger, color.dangerPressed],
+  ])('%s still measures what the report says', (label, rest, pressed) => {
+    expect(Number(contrast(rest, pressed).toFixed(2))).toBe(MEASURED[label]);
   });
 });

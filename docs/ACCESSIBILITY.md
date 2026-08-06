@@ -42,14 +42,34 @@ digits **14.54:1** on their key.
 
 ## 2. No disabled buttons; validate on submit with an inline message
 
-**Verified, automated.** `Button` has no `disabled` prop, and
-`conventions.test.tsx` forces one through with `@ts-expect-error` to prove the
-component still works and still reports `accessibilityState.disabled` falsy.
-`a11y.test.tsx` sweeps the same claim across `Button`, `HoldButton`, `Chip`,
-`Row` and `Pill`.
+**Verified, automated — with one documented exception.**
+
+`Button` has no `disabled` prop at all, and `conventions.test.tsx` forces one
+through with `@ts-expect-error` to prove the component still works and still
+reports `accessibilityState.disabled` falsy. `a11y.test.tsx` sweeps the same
+claim across `Button`, `HoldButton`, `Chip`, `Row` and `Pill`.
 
 Inline validation is exercised on `enrol` (short number), `offers` (no tenor, no
 amount), `banks` (no account) and `repay` (no bank).
+
+### The exception: `BiometricTarget` when there is no sensor
+
+`src/features/session/biometric-target.tsx` renders `disabled={unavailable}`,
+so the blanket claim "this app has no disabled controls" would be false.
+
+The rule exists because a dead CTA gives a borrower no way to discover what is
+wrong — which is a statement about **validation**. A Continue button greyed out
+because a field is incomplete hides the fix. This is a different situation: the
+handset has no fingerprint or face sensor, there is nothing the borrower can do
+to change that, and pressing it could only raise a prompt that fails. The screen
+already offers the PIN as a complete alternative rather than a fallback, and the
+control's `accessibilityLabel` changes to say why it is unavailable, so a screen
+reader user is told the reason rather than meeting silence.
+
+The distinction is now asserted rather than described: `a11y.test.tsx` requires
+`BiometricTarget` to be enabled whenever a sensor exists, and permits `disabled`
+**only** in the unavailable case. Any future control that disables itself for
+validation fails that policy.
 
 ## 3. Nothing depends on colour alone
 

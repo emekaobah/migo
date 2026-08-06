@@ -15,6 +15,7 @@ import {
 } from '@/components/ui';
 import { PaymentSchedule } from '@/features/loans/payment-schedule';
 import { DetectionState } from '@/features/repayment/detection-state';
+import { BiometricTarget } from '@/features/session/biometric-target';
 import { control } from '@/theme';
 
 /**
@@ -101,6 +102,38 @@ describe('no disabled buttons — the convention, swept across primitives', () =
       .forEach((node) => {
         expect(node.props.accessibilityState?.disabled).toBeFalsy();
       });
+  });
+});
+
+describe('the one control allowed to disable itself', () => {
+  /**
+   * `BiometricTarget` is the single exception to "no disabled buttons", and it
+   * is an exception to the letter of the rule rather than its intent: the rule
+   * exists so a borrower can always discover what is wrong, and a handset with
+   * no sensor is not something they can fix. PIN is offered beside it as a
+   * complete alternative.
+   *
+   * Asserted rather than described, so a control that starts disabling itself
+   * for *validation* — the thing the handoff actually forbids — fails here.
+   */
+  it('is enabled whenever the handset has a sensor', async () => {
+    const { getByTestId } = await render(
+      <BiometricTarget onPress={noop} recognised={false} />,
+    );
+
+    expect(getByTestId('biometric-target').props.accessibilityState?.disabled).toBeFalsy();
+  });
+
+  it('disables itself only when no sensor exists, and says why', async () => {
+    const { getByTestId } = await render(
+      <BiometricTarget onPress={noop} recognised={false} unavailable />,
+    );
+
+    const target = getByTestId('biometric-target');
+    expect(target.props.accessibilityState?.disabled).toBe(true);
+    // Silence would be the real failure — a screen-reader user meeting a dead
+    // control with no explanation.
+    expect(String(target.props.accessibilityLabel).trim().length).toBeGreaterThan(0);
   });
 });
 
