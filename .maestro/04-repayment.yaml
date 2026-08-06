@@ -1,0 +1,35 @@
+# Journey 4 — active → repay → wallet → detection → active.
+#
+# The detection window is six real seconds and there is deliberately no in-app
+# trigger to short-circuit it (PLAN §5), so this flow waits it out. That wait is
+# the honest depiction of a screen watching for a transfer.
+appId: com.emekaobah.migo
+---
+- launchApp
+- runFlow: helpers/sign-in.yaml
+
+- assertVisible: 'Your loan'
+- tapOn: 'Repay'
+
+# ── repay ──────────────────────────────────────────────────────────────────
+- assertVisible: 'Pay'
+- assertVisible: '.*Remaining after this payment.*'
+- tapOn: 'Sterling Bank'
+- tapOn: 'Get my wallet details'
+
+# ── wallet ─────────────────────────────────────────────────────────────────
+- assertVisible: 'Transfer to this account'
+- assertVisible:
+    id: 'payment-waiting'
+# No demo shortcut may exist on this screen.
+- assertNotVisible: ".*I've sent.*"
+
+- extendedWaitUntil:
+    visible:
+      id: 'payment-received'
+    timeout: 15000
+
+# Settles, then returns on its own.
+- extendedWaitUntil:
+    visible: 'Your loan'
+    timeout: 10000

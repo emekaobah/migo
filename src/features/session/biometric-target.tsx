@@ -69,6 +69,12 @@ const styles = StyleSheet.create({
     borderColor: color.amber,
     alignItems: 'center',
     justifyContent: 'center',
+    // The convention every other fixed-height control follows, and the one the
+    // handoff calls out: "several were being crushed before this was applied."
+    // `lock` does not scroll today, so nothing is crushed — but this was the
+    // only interactive component missing it, and the protection should not
+    // depend on a screen's current scroll mode.
+    flexShrink: 0,
   },
   pressed: { backgroundColor: onNavy.keypadPressed },
   inner: {

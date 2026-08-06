@@ -1,0 +1,32 @@
+# Journey 7 — sign out → newdevice → authorise.
+#
+# Signing out unbinds the phone, so this flow runs last: everything after it
+# would need to enrol again. The confirmation screen states what does *not*
+# change, which is the part that keeps a destructive action from feeling like
+# losing the loan.
+appId: com.emekaobah.migo
+---
+- launchApp
+- runFlow: helpers/sign-in.yaml
+
+- assertVisible: 'Your loan'
+- tapOn:
+    point: '90%,8%'   # the account avatar in the header
+
+- assertVisible: '.*account.*'
+# Locking and signing out are deliberately separated — both must be present and
+# distinct.
+- assertVisible: 'Lock the app'
+- tapOn: 'Sign out of this phone'
+
+- assertVisible: 'Sign out of this phone?'
+- assertVisible: '.*561.*9.*'
+- tapOn:
+    id: 'sign-out'
+
+- extendedWaitUntil:
+    visible: "We don't recognise this phone."
+    timeout: 10000
+- assertVisible: '*561*9#'
+- tapOn:
+    id: 'authorised'

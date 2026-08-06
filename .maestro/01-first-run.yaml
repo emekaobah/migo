@@ -1,0 +1,84 @@
+# Journey 1 — enrol → otp → bind → offers → confirm → success.
+#
+# The USSD detour is included rather than skipped: it is the path a borrower
+# takes when the code never arrives, which is the situation this product exists
+# to solve. Skipping it would test only the happy path of the thing whose
+# unhappy path is the point.
+appId: com.emekaobah.migo
+---
+- runFlow: helpers/reset.yaml
+- launchApp
+
+# ── enrol ──────────────────────────────────────────────────────────────────
+- assertVisible: 'Sign in to Migo'
+# Custom keypad throughout — no system keyboard anywhere in this product.
+- tapOn: '8'
+- tapOn: '0'
+- tapOn: '3'
+# A short number must be refused inline, with the CTA still live.
+- tapOn:
+    id: 'continue'
+- assertVisible: '.*needs all 10 digits.*'
+- tapOn: '1'
+- tapOn: '2'
+- tapOn: '3'
+- tapOn: '4'
+- tapOn: '5'
+- tapOn: '6'
+- tapOn: '7'
+- assertNotVisible: '.*needs all 10 digits.*'
+- tapOn:
+    id: 'continue'
+
+# ── otp ────────────────────────────────────────────────────────────────────
+- assertVisible: '.*[Ee]nrolment code.*'
+# The simulated arrival lands at 3.2s and auto-advances 1.4s later. Waiting for
+# `bind` rather than sleeping keeps the flow honest if those timings change.
+- extendedWaitUntil:
+    visible: '.*sign in.*'
+    timeout: 12000
+
+# ── bind ───────────────────────────────────────────────────────────────────
+- assertVisible: 'Set a 6-digit backup PIN'
+- repeat:
+    times: 6
+    commands:
+      - tapOn: '1'
+- tapOn:
+    id: 'finish'
+
+# ── loading → offers ───────────────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: 'How long do you need it?'
+    timeout: 15000
+
+# Duration first, then amount — the two-stage order is the design, so assert
+# the amounts are genuinely absent until a tenor is chosen.
+- assertNotVisible: 'How much do you need?'
+- tapOn: '30 days'
+- assertVisible: 'How much do you need?'
+- tapOn: '₦49,900'
+- tapOn: 'Continue'
+
+# ── banks ──────────────────────────────────────────────────────────────────
+- assertVisible: 'Where should the money go?'
+- tapOn: '.*GTBank.*'
+- tapOn: 'Use this account'
+
+# ── confirm ────────────────────────────────────────────────────────────────
+- assertVisible: 'You receive'
+- assertVisible: '₦49,900'
+# Everything being agreed to is on this screen, not behind a link.
+- assertVisible: 'Interest & fees'
+- assertVisible: 'Paid into'
+- longPressOn:
+    id: 'hold-to-accept'
+    duration: 1500
+
+# ── success ────────────────────────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: '.*Sent to.*'
+    timeout: 10000
+- tapOn: 'View my loan'
+- assertVisible: 'Your loan'
+- assertVisible: 'Outstanding'
