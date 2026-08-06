@@ -1,0 +1,17 @@
+# Maestro configuration (PLAN §6b).
+#
+# These flows double as the demo script. That is deliberate: a recorded
+# walkthrough assembled by hand drifts from the app the moment either changes,
+# whereas a flow that has to pass cannot describe a screen that is not there.
+appId: com.emekaobah.migo
+---
+# Ordered so a fresh device runs them end to end: enrol, then everything that
+# depends on being enrolled.
+flows:
+  - 01-first-run.yaml
+  - 02-returning.yaml
+  - 03-pin-fallback.yaml
+  - 04-repayment.yaml
+  - 05-extension.yaml
+  - 06-support.yaml
+  - 07-new-device.yaml

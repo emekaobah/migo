@@ -1,0 +1,22 @@
+# Journey 3 — lock → pinlock → active.
+#
+# PIN is a complete alternative here, not a fallback stub: plenty of handsets in
+# this market have no usable sensor, and iOS gives the PIN pad equal prominence
+# because Face ID failure is common. This flow is the iOS path for journey 2.
+appId: com.emekaobah.migo
+---
+- launchApp
+
+- assertVisible: 'Welcome back'
+- tapOn:
+    id: 'use-pin'
+
+- assertVisible: '.*PIN.*'
+- repeat:
+    times: 6
+    commands:
+      - tapOn: '1'
+
+- extendedWaitUntil:
+    visible: 'Your loan'
+    timeout: 10000

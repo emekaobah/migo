@@ -26,7 +26,7 @@ export function HeaderRow(props: Props) {
             onPress={props.onBack}
             accessibilityRole="button"
             accessibilityLabel="Back"
-            style={styles.back}
+            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
           >
             <Text style={styles.chevron}>‹</Text>
           </Pressable>
@@ -44,7 +44,7 @@ export function HeaderRow(props: Props) {
         onPress={props.onHelp}
         accessibilityRole="button"
         accessibilityLabel="Help"
-        style={styles.help}
+        style={({ pressed }) => [styles.help, pressed && styles.pressed]}
       >
         <Text style={styles.helpLabel}>Help</Text>
       </Pressable>
@@ -69,6 +69,14 @@ const styles = StyleSheet.create({
     // inside the 48px target instead of centring it.
     alignItems: 'center',
   },
+  /**
+   * Both header controls sit on whatever surface the screen uses — navy, white
+   * or the app surface — so the press cannot be a background fill without
+   * picking the wrong colour on two of the three. Opacity reads correctly on
+   * all of them, and these were the only tappable surfaces in the design system
+   * with no press feedback at all.
+   */
+  pressed: { opacity: 0.55 },
   chevron: { fontSize: 30, color: color.navy },
   title: { ...type.bodyLarge, fontWeight: '700' },
   step: { ...type.caption, color: color.textMuted },

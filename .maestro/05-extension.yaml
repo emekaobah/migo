@@ -1,0 +1,26 @@
+# Journey 5 — active → extend → 30% → new due date.
+#
+# **30% carried 30 days**, client-confirmed 2026-08-02, superseding the
+# handoff's 20%/same-duration figure (PLAN §5). The percentage is asserted here
+# because it is the one number in this product that two sources disagreed about,
+# and a flow that only checked "some percentage" would not have caught it.
+appId: com.emekaobah.migo
+---
+- launchApp
+- runFlow: helpers/sign-in.yaml
+
+- assertVisible: 'Your loan'
+- tapOn: 'Extend'
+
+- assertVisible: 'Extend your loan'
+- assertVisible: 'You owe now'
+- assertVisible: 'Pay today (30%)'
+- assertVisible: "You'll owe after 30 days"
+- assertVisible: 'New due date'
+
+- tapOn: '.*and extend.*'
+
+- extendedWaitUntil:
+    visible: 'This loan has been extended'
+    timeout: 10000
+- assertVisible: 'Outstanding'

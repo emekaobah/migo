@@ -1,0 +1,57 @@
+# Journey 6 — help → search → faq section → chat → back to origin.
+#
+# The round trip is the point. Help stores where it was opened from rather than
+# inferring it, and the handoff attributes four separate defects to getting that
+# wrong — so this flow leaves from `active` and asserts it lands back on
+# `active`, not merely that some back navigation happened.
+appId: com.emekaobah.migo
+---
+- launchApp
+- runFlow: helpers/sign-in.yaml
+
+- assertVisible: 'Your loan'
+- tapOn: 'Help & FAQs'
+
+# ── help ───────────────────────────────────────────────────────────────────
+- assertVisible: 'Help'
+# Chat sits above search: someone opening Help is often stuck, not browsing.
+- assertVisible: 'Chat with support'
+- assertVisible: 'About Migo'
+
+# ── search ─────────────────────────────────────────────────────────────────
+- tapOn: 'Search help'
+- inputText: 'extend'
+- extendedWaitUntil:
+    visible: 'Loan Repayment'
+    timeout: 5000
+
+- eraseText
+- inputText: 'zzzznotathing'
+- extendedWaitUntil:
+    visible: 'Nothing matches that. Try another word, or start a chat above.'
+    timeout: 5000
+- eraseText
+
+# ── a FAQ section ──────────────────────────────────────────────────────────
+- tapOn: 'Loan Repayment'
+- assertVisible: 'How do I extend my loan?'
+- tapOn: 'How do I extend my loan?'
+# Verbatim client copy — and the answer that says 30%, which the extend screen
+# follows. The Loan Offers section says 20%; see OPEN-QUESTIONS #7.
+- assertVisible: '.*30%.*'
+- back
+
+# ── chat ───────────────────────────────────────────────────────────────────
+- tapOn: 'Chat with support'
+- assertVisible: 'Amaka'
+- assertVisible: '.*Typing is disabled.*'
+- tapOn: 'Extend my loan'
+- extendedWaitUntil:
+    visible: '.*30%.*'
+    timeout: 10000
+- back
+
+# ── back to where Help was opened from ─────────────────────────────────────
+- assertVisible: 'Help'
+- back
+- assertVisible: 'Your loan'
