@@ -9,9 +9,50 @@ the one usually left out.
 
 | | |
 |---|---|
-| **Automated** | 270 tests, 20 suites. `src/__tests__/theme/contrast.test.ts` (30) and `src/__tests__/screens/a11y.test.tsx` (30) cover this list |
+| **Automated** | 277 tests, 20 suites. `theme/contrast.test.ts` (35) and `screens/a11y.test.tsx` (32) cover this list |
 | **Still needs a device** | TalkBack, VoiceOver, low-end Android, biometric prompts |
 | **Open findings** | 3, listed at the end. None block the build |
+
+---
+
+## ⚠ Phase 8 is not complete
+
+Stated up front so a green CI badge does not read as a finished phase. PLAN §8's
+exit is: *"an accessibility report against the handoff's list, item by item;
+`pnpm test` and all Maestro flows pass on both platforms."* The second half is
+not met.
+
+| exit criterion | status |
+|---|---|
+| Accessibility report, item by item | ✅ this document |
+| The handoff's audit list re-verified | ✅ automated, §§1–5 below |
+| `a11y.test.tsx` completed against the list | ✅ 32 assertions |
+| Pressed states on every tappable surface | ✅ one gap found and fixed (§6) |
+| Haptics on keypad, hold-complete, error | ✅ verified (§7) |
+| `pnpm test` passes | ✅ 277 across 20 suites |
+| **Seven Maestro flows written *and green*** | ⚠️ **written, never run** |
+| **TalkBack walkthrough of all four journeys** | ❌ **not done** |
+| **VoiceOver walkthrough of all four journeys** | ❌ **not done** |
+| **Low-end Android device pass** | ❌ **not done** |
+| **Biometric sign-in verified by hand** | ❌ **not done** |
+
+### Why the second half is outstanding
+
+Every remaining item needs hardware and a real build. The flows target an
+installed app from an EAS profile, and Maestro is not installed in the
+environment they were authored in — so they have been written and reviewed but
+have **never executed once**. Treat them as unverified until they have.
+
+`.maestro/02-returning.yaml` additionally cannot run unattended on either
+platform, which is a property of the tooling rather than of the flow: Maestro's
+`runScript` has no shell access so it cannot call `adb emu finger touch 1`, and
+the iOS simulator's Features → Face ID → Matching Face is a menu action with no
+scriptable equivalent. It is excluded from the ordered suite in `config.yaml`
+for that reason, and `03-pin-fallback.yaml` covers the same journey unattended.
+
+**These carry into Phase 9**, whose first task is the EAS `preview` build that
+makes all of them possible. Nothing here blocks that build; the risk is only
+that an untested flow is mistaken for a passing one.
 
 ---
 
@@ -181,18 +222,23 @@ state. Tracked as OPEN-QUESTIONS #8; needs client content, not a synonym map.
 
 ## Not verifiable without hardware
 
-Stated plainly rather than implied, per PLAN §6b.
+The detail behind the ⚠ table at the top. Stated plainly rather than implied,
+per PLAN §6b — and worth being specific about *what each one would catch*, since
+"needs a device" is otherwise easy to read as a formality.
 
-| | |
+| | what it would actually catch |
 |---|---|
-| **TalkBack** (Android) | Walkthrough of all four journeys |
-| **VoiceOver** (iOS) | Same. The composed-label fix in §3 specifically needs confirming by ear |
-| **Low-end Android** | The actual market. Contrast in daylight and the §B pressed states are the things to look at |
-| **Biometric prompts** | Maestro cannot satisfy either platform's prompt — see `.maestro/02-returning.yaml` |
-| **Content sizing** | Large-text and display-scaling behaviour is untested |
+| **TalkBack** (Android) | Whether the composed row labels in §3 are announced as one sentence or read past. The automated test asserts the `accessible` prop is set; only a screen reader proves the effect |
+| **VoiceOver** (iOS) | Same, and the one most worth doing — the composed-label defect this fixed was found in review, not by a test |
+| **Low-end Android** | Finding B. A 1.09 pressed state is a number on a page until someone tries to see it on a cheap panel in daylight. PLAN §8 calls this the actual market |
+| **Biometric prompts** | That `lock` → `active` completes at all on real hardware. Neither Maestro nor the unit tests exercise a real prompt |
+| **Content sizing** | Large-text and display-scaling behaviour, which nothing in this repo tests. A 48px target at 200% text is not still 48px of usable space |
+| **The seven Maestro flows** | Whether the journeys hold end to end against an installed build. They have never been run — see above |
 
-The seven Maestro flows in `.maestro/` are written and cover the journeys, but
-have not been run: Maestro is not installed in the environment they were
-authored in, and they need a real build from an EAS profile. Running them is
-Phase 9's first task, and `02-returning.yaml` documents why it alone cannot run
-unattended.
+### One thing the automated suite structurally cannot cover
+
+Every 48px assertion checks a **declared** height. Controls sized by content and
+padding — `biometric-card` measures 74px, `ChatCard` and the FAQ rows are
+similar — are invisible to it, because a rendered tree in Jest has no layout.
+Only the device pass measures those. The automated result should be read as
+"nothing declares itself too small", not "everything is big enough".
