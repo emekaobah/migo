@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import {
   Accordion,
@@ -107,33 +107,60 @@ describe('no disabled buttons — the convention, swept across primitives', () =
 
 describe('the one control allowed to disable itself', () => {
   /**
-   * `BiometricTarget` is the single exception to "no disabled buttons", and it
-   * is an exception to the letter of the rule rather than its intent: the rule
-   * exists so a borrower can always discover what is wrong, and a handset with
-   * no sensor is not something they can fix. PIN is offered beside it as a
-   * complete alternative.
+   * `BiometricTarget` is the single exception to "no disabled buttons", and an
+   * exception to the letter of the rule rather than its intent: the rule exists
+   * so a borrower can always discover what is wrong, and a handset with no
+   * sensor is not something they can fix. PIN sits beside it as a complete
+   * alternative. Asserted rather than described, so a control that starts
+   * disabling itself for *validation* — the thing the handoff actually forbids
+   * — fails here.
    *
-   * Asserted rather than described, so a control that starts disabling itself
-   * for *validation* — the thing the handoff actually forbids — fails here.
+   * Checked through **behaviour and accessibility state**, not `props.disabled`.
+   * React Native's `Pressable` does not forward `disabled` to the host node:
+   * verified by probe, `'disabled' in props` is `false` and the value is
+   * `undefined`, while `accessibilityState.disabled` is `true`. A
+   * `props.disabled` assertion would pass vacuously when enabled and fail when
+   * disabled. Firing the press is the better test regardless — it asks what
+   * `disabled` is *for* rather than how it is spelled.
    */
   it('is enabled whenever the handset has a sensor', async () => {
+    const onPress = jest.fn();
     const { getByTestId } = await render(
-      <BiometricTarget onPress={noop} recognised={false} />,
+      <BiometricTarget onPress={onPress} recognised={false} />,
     );
 
-    expect(getByTestId('biometric-target').props.accessibilityState?.disabled).toBeFalsy();
+    const target = getByTestId('biometric-target');
+    expect(target.props.accessibilityState?.disabled).toBeFalsy();
+
+    await fireEvent.press(target);
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   it('disables itself only when no sensor exists, and says why', async () => {
+    const onPress = jest.fn();
     const { getByTestId } = await render(
-      <BiometricTarget onPress={noop} recognised={false} unavailable />,
+      <BiometricTarget onPress={onPress} recognised={false} unavailable />,
     );
 
     const target = getByTestId('biometric-target');
     expect(target.props.accessibilityState?.disabled).toBe(true);
-    // Silence would be the real failure — a screen-reader user meeting a dead
-    // control with no explanation.
-    expect(String(target.props.accessibilityLabel).trim().length).toBeGreaterThan(0);
+
+    // The press is genuinely blocked, not merely announced as blocked.
+    await fireEvent.press(target);
+    expect(onPress).not.toHaveBeenCalled();
+
+    /*
+     * Silence is the real failure here — a screen-reader user meeting a dead
+     * control with no explanation.
+     *
+     * Asserted on the raw value, and on the actual copy. An earlier version
+     * checked `String(label).trim().length > 0`, which passes when the label is
+     * missing entirely: `String(undefined)` is the nine-character string
+     * "undefined". The test claimed to guard against silence while being blind
+     * to it.
+     */
+    expect(typeof target.props.accessibilityLabel).toBe('string');
+    expect(target.props.accessibilityLabel).toBe('Use your PIN to sign in');
   });
 });
 
