@@ -18,7 +18,7 @@ export function UssdHintCard({ onUseUssd }: Props) {
     <Card tone="white">
       <Text style={styles.title}>Code not arriving?</Text>
       <Text style={styles.body}>
-        Don&apos;t call us. Dial <Text style={styles.code}>{ENROL_CODE}</Text> from this SIM and
+        Dial <Text style={styles.code}>{ENROL_CODE}</Text> from this SIM and
         choose <Text style={styles.strong}>Set up app</Text>.
       </Text>
       <Button

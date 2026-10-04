@@ -53,9 +53,7 @@ export default function RepayScreen() {
       <Amount value={naira(due.amount)} size="display" />
 
       <Text style={styles.explain}>
-        We open a wallet in your own name at the bank you pick. Transfer this
-        amount into it and we clear the payment automatically — there is nothing
-        to confirm afterwards.
+        Pick a bank and we&apos;ll give you an account to transfer this amount into.
       </Text>
 
       <BankChoice selected={selected} onSelect={setSelected} />

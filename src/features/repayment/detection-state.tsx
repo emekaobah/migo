@@ -40,8 +40,7 @@ export function DetectionState({ received, amount }: Props) {
         <View style={styles.waitingText}>
           <Text style={styles.waitingTitle}>Waiting for your transfer</Text>
           <Text style={styles.waitingBody}>
-            We spot it automatically, usually within a minute. You can leave this
-            screen — it keeps working.
+            This usually takes under a minute. You can leave this screen.
           </Text>
         </View>
       </View>

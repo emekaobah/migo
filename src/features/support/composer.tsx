@@ -12,9 +12,9 @@ import { color, radius, space, type } from '@/theme';
  */
 export function Composer() {
   return (
-    <View style={styles.bar} accessible accessibilityLabel="Typing is disabled in this preview">
+    <View style={styles.bar} accessible accessibilityLabel="Choose a reply above">
       <View style={styles.field}>
-        <Text style={styles.note}>Typing is disabled — use the replies above</Text>
+        <Text style={styles.note}>Choose a reply above</Text>
       </View>
     </View>
   );

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, HeaderRow, InlineError, Screen } from '@/components/ui';
+import { Button, HeaderRow, InlineError, Screen } from '@/components/ui';
 import { error as errorHaptic } from '@/lib/haptics';
 import { clearPin } from '@/lib/secure-pin';
 import { NEW_DEVICE_CODE } from '@/lib/ussd';
@@ -14,9 +14,7 @@ import { color, space, type } from '@/theme';
  * Screen 17 — the destructive confirmation.
  *
  * Locking and signing out are deliberately separate: locking is routine,
- * signing out unbinds the device and costs a USSD round trip to undo. The card
- * states what does **not** change, because the fear this screen has to answer
- * is "will I lose my loan?" — and the answer is no.
+ * signing out unbinds the device and costs a USSD round trip to undo.
  */
 export default function SignoutScreen() {
   const [error, setError] = useState<string | null>(null);
@@ -62,17 +60,6 @@ export default function SignoutScreen() {
           authorise it.
         </Text>
 
-        <Card tone="tonal">
-          <Text style={styles.cardTitle}>This does not change</Text>
-          {['Your loan and what you owe', 'Your borrowing limit', 'Your repayment dates'].map(
-            (line) => (
-              <Text key={line} style={styles.cardLine}>
-                • {line}
-              </Text>
-            ),
-          )}
-        </Card>
-
         {error ? <InlineError message={error} /> : null}
 
         <Button label="Sign out" variant="destructive" onPress={() => void signOut()} testID="sign-out" />
@@ -85,6 +72,4 @@ export default function SignoutScreen() {
 const styles = StyleSheet.create({
   body: { gap: space.lg, paddingTop: space.lg, paddingBottom: space.xl },
   blurb: { ...type.body, color: color.textSecondary, lineHeight: 22 },
-  cardTitle: { ...type.bodyLarge, fontWeight: '600', marginBottom: space.sm },
-  cardLine: { ...type.body, color: color.textSecondary, lineHeight: 24 },
 });

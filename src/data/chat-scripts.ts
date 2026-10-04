@@ -52,7 +52,7 @@ export function opener(facts: ChatFacts): ScriptedMessage[] {
   }
 
   return [
-    { from: 'system', text: 'Chat started · scripted preview' },
+    { from: 'system', text: 'Chat started' },
     { from: 'agent', text: greeting },
   ];
 }
