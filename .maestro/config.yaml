@@ -1,0 +1,28 @@
+# Maestro configuration (PLAN §6b).
+#
+# These flows double as the demo script. That is deliberate: a recorded
+# walkthrough assembled by hand drifts from the app the moment either changes,
+# whereas a flow that has to pass cannot describe a screen that is not there.
+appId: com.emekaobah.migo
+---
+# The unattended suite, ordered so a fresh device runs it end to end: enrol,
+# then everything that depends on being enrolled, then sign-out last because it
+# unbinds the phone.
+#
+# **02-returning.yaml is deliberately absent.** It needs a biometric prompt
+# satisfied from outside Maestro — `adb emu finger touch 1` on Android, and
+# nothing at all on iOS, where Matching Face is an unscriptable menu action. A
+# suite that listed it would claim an end-to-end run it cannot deliver. Run it
+# on its own:
+#
+#     maestro test .maestro/02-returning.yaml
+#
+# 03-pin-fallback.yaml covers the same journey by the PIN route and *is*
+# unattended, which is why the returning path is still represented below.
+flows:
+  - 01-first-run.yaml
+  - 03-pin-fallback.yaml
+  - 04-repayment.yaml
+  - 05-extension.yaml
+  - 06-support.yaml
+  - 07-new-device.yaml

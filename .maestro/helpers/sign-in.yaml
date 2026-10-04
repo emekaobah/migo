@@ -1,0 +1,18 @@
+# Gets an already-enrolled device from cold start to the active loan.
+#
+# Takes the **PIN** path rather than the biometric one, deliberately: PIN is the
+# only route Maestro can drive on both platforms unattended, so every flow that
+# merely needs to *be* signed in uses it. Biometric sign-in is the subject of
+# 02-returning.yaml, where it is the thing under test rather than a precondition.
+appId: com.emekaobah.migo
+---
+- assertVisible: 'Welcome back'
+- tapOn:
+    id: 'use-pin'
+- repeat:
+    times: 6
+    commands:
+      - tapOn: '1'
+- extendedWaitUntil:
+    visible: 'Your loan'
+    timeout: 10000

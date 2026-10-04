@@ -10,6 +10,7 @@
     "backgroundColor": "#010065",
     "ios": {
       "bundleIdentifier": "com.emekaobah.migo",
+      "appleTeamId": "HP5MVM38V6",
       "supportsTablet": false
     },
     "android": {
@@ -31,7 +32,11 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }
-      ]
+      ],
+      ["expo-build-properties", { "ios": { "enableSceneSupport": true } }],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

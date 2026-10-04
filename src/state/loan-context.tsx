@@ -62,7 +62,12 @@ const INITIAL: LoanState = {
 function reducer(state: LoanState, action: Action): LoanState {
   switch (action.type) {
     case 'offersLoaded':
-      return { ...state, offers: action.offers };
+      // Opens on the shortest tenor so `offers` arrives priced rather than
+      // blank — stage two is the borrower's first real decision, and making
+      // them tap "14 days" to reveal it was a step that asked nothing. Falls
+      // back to `state.tenor` so a re-fetch cannot discard a live choice, and
+      // to `null` if the rate table ever comes back empty.
+      return { ...state, offers: action.offers, tenor: state.tenor ?? action.offers.tenors[0] ?? null };
     case 'selectTenor':
       return { ...state, tenor: action.tenor };
     case 'selectPrincipal':

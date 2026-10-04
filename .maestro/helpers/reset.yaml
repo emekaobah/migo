@@ -1,0 +1,9 @@
+# Puts the device back to "never seen this app".
+#
+# `clearKeychain` matters as much as `clearState`: the PIN hash and the device
+# key live in SecureStore, so a flow that cleared only app state would find
+# itself already enrolled and take the returning path by mistake.
+appId: com.emekaobah.migo
+---
+- clearState
+- clearKeychain

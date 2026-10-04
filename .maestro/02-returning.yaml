@@ -1,0 +1,44 @@
+# Journey 2 — cold start → biometric sign-in → active loan.
+#
+# This is the product's whole thesis, so the assertion that matters most is the
+# negative one: no code is sent, typed, or read aloud anywhere on this path.
+#
+# ── This flow cannot run unattended, and that is not a gap in the flow ──────
+#
+# Maestro has no way to satisfy a biometric prompt. `runScript` executes in a
+# sandbox with no shell access, so it cannot call `adb`, and the iOS
+# simulator's Features → Face ID → Matching Face is a menu action with no
+# scriptable equivalent at all.
+#
+#   Android:  with the prompt on screen, from another shell —
+#               adb emu finger touch 1
+#             The flow then completes on its own.
+#
+#   iOS:      not automatable. 03-pin-fallback.yaml covers the equivalent
+#             journey, and Face ID sign-in is verified by hand on a device.
+#
+# PLAN §6b says to state this rather than imply full automation, so it is
+# stated here and in the Phase 9 write-up.
+appId: com.emekaobah.migo
+---
+# No reset: this flow depends on 01 having enrolled the device.
+- launchApp
+
+- assertVisible: 'Welcome back'
+
+# The negative assertion the whole product rests on. `assertNotVisible` on the
+# words a code flow would need — if any of these ever appear on the returning
+# path, the thesis has broken.
+- assertNotVisible: '.*enter the code.*'
+- assertNotVisible: '.*resend.*'
+- assertNotVisible: '.*SMS.*'
+
+- tapOn:
+    id: 'biometric-target'
+
+# Supply the fingerprint now (Android). The 60s window is for a human or a
+# wrapper script; it is not a timing assertion.
+- extendedWaitUntil:
+    visible: 'Your loan'
+    timeout: 60000
+- assertVisible: 'Outstanding'
