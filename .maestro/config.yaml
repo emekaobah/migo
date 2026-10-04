@@ -10,10 +10,10 @@ appId: com.emekaobah.migo
 # unbinds the phone.
 #
 # **02-returning.yaml is deliberately absent.** It needs a biometric prompt
-# satisfied from outside Maestro — `adb emu finger touch 1` on Android, and
-# nothing at all on iOS, where Matching Face is an unscriptable menu action. A
-# suite that listed it would claim an end-to-end run it cannot deliver. Run it
-# on its own:
+# satisfied from another shell (`adb emu finger touch 1` on Android, a
+# `notifyutil` match on the iOS simulator — see the flow's header). A suite
+# that listed it would claim an end-to-end run it cannot deliver. Run it on its
+# own:
 #
 #     maestro test .maestro/02-returning.yaml
 #

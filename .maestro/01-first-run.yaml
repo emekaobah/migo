@@ -10,7 +10,7 @@ appId: com.emekaobah.migo
 - launchApp
 
 # ── enrol ──────────────────────────────────────────────────────────────────
-- assertVisible: 'Sign in to Migo'
+- assertVisible: 'Sign in or create your Migo account'
 # Custom keypad throughout — no system keyboard anywhere in this product.
 - tapOn: '8'
 - tapOn: '0'
@@ -31,7 +31,7 @@ appId: com.emekaobah.migo
     id: 'continue'
 
 # ── otp ────────────────────────────────────────────────────────────────────
-- assertVisible: '.*[Ee]nrolment code.*'
+- assertVisible: 'Enter the code we sent you'
 # The simulated arrival lands at 3.2s and auto-advances 1.4s later. Waiting for
 # `bind` rather than sleeping keeps the flow honest if those timings change.
 - extendedWaitUntil:
@@ -40,6 +40,9 @@ appId: com.emekaobah.migo
 
 # ── bind ───────────────────────────────────────────────────────────────────
 - assertVisible: 'Set a 6-digit backup PIN'
+# The screen is visible before its push transition settles; on iOS the first
+# keypad tap was lost without this wait, leaving the PIN one digit short.
+- waitForAnimationToEnd
 - repeat:
     times: 6
     commands:
@@ -56,7 +59,7 @@ appId: com.emekaobah.migo
 # one opens pre-selected on the shortest tenor, so stage two is priced from the
 # start rather than hidden behind a tap. Switching duration re-prices it.
 - assertVisible: 'How much do you need?'
-- tapOn: '30 days'
+- tapOn: '30 days.*'
 - assertVisible: 'How much do you need?'
 - tapOn: '₦49,900'
 - tapOn: 'Continue'
@@ -71,10 +74,11 @@ appId: com.emekaobah.migo
 - assertVisible: '₦49,900'
 # Everything being agreed to is on this screen, not behind a link.
 - assertVisible: 'Interest & fees'
-- assertVisible: 'Paid into'
+- assertVisible: 'Paid into.*'
+# Maestro's long press has a fixed hold (no `duration` property), which is
+# longer than the 1.5s the control needs.
 - longPressOn:
     id: 'hold-to-accept'
-    duration: 1500
 
 # ── success ────────────────────────────────────────────────────────────────
 - extendedWaitUntil:
