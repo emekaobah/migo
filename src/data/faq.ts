@@ -1,7 +1,7 @@
 import type { FaqSection } from '@/api/interfaces/faq-source';
 
 /**
- * Migo's live FAQ — **verbatim** (HANDOFF §19).
+ * Migo's live FAQ — **verbatim** (HANDOFF §19), except where noted below.
  *
  * 10 sections, 45 questions, ported mechanically from the design bundle's
  * `faq-data.js` rather than retyped, so the wording cannot drift from what the
@@ -181,7 +181,7 @@ export const FAQ: FaqSection[] = [
       {
         q: 'I cannot pay but do not want my offers affected, what do I do?',
         a: [
-          'Extend the loan rather than miss the date. Paying 30% of your outstanding balance extends it, and whatever is left moves out by 30 days, so your repayment record and your offers stay intact.',
+          'Extend the loan rather than let the date pass. Paying 30% of your outstanding balance extends it, and whatever is left moves out by 30 days, so the loan is not overdue and a missed payment does not count against you.',
         ],
       },
     ],
@@ -211,8 +211,8 @@ export const FAQ: FaqSection[] = [
       {
         q: 'How do I extend my loan?',
         a: [
-          'Tap Extend on your loan screen before your due date. To extend, you pay 30% of what you owe today, principal and interest together, and the rest of the balance carries for 30 days to a new due date.',
-          'There is nothing else to request: the screen shows exactly what you pay now, what carries over and when it is due before you confirm. The carried balance still attracts a smaller charge. If anything looks wrong, chat with Migo support from Help.',
+          'Tap Extend on your loan screen before your due date. To extend, you pay 30% of what you owe today, and the rest of the balance carries for 30 days to a new due date.',
+          'Before you confirm, the screen sets out what you pay now, what carries over and the new date. Interest applies to the part that carries over. If anything looks wrong, chat with Migo support from Help.',
         ],
       },
       {

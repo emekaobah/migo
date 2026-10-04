@@ -59,9 +59,12 @@ describe('the FAQ on extensions', () => {
   const pct = `${Math.round(EXTENSION.pct * 100)}%`;
   const days = `${EXTENSION.days} days`;
 
+  async function questions() {
+    return (await faqSource.sections()).flatMap((s) => s.questions);
+  }
+
   async function answer(question: string): Promise<string> {
-    const sections = await faqSource.sections();
-    const item = sections.flatMap((s) => s.questions).find((q) => q.q === question);
+    const item = (await questions()).find((q) => q.q === question);
     expect(item).toBeDefined();
     return item!.a.join(' ');
   }
@@ -77,9 +80,8 @@ describe('the FAQ on extensions', () => {
   });
 
   it('never states a different percentage for an extension', async () => {
-    const sections = await faqSource.sections();
-    const sentences = sections
-      .flatMap((s) => s.questions.flatMap((q) => q.a))
+    const sentences = (await questions())
+      .flatMap((q) => q.a)
       .flatMap((paragraph) => paragraph.split(/(?<=[.!?])\s+/))
       .filter((sentence) => /exten/i.test(sentence));
 
