@@ -2,8 +2,9 @@
 #
 # **30% carried 30 days**, decided from Migo's published FAQ, superseding the
 # handoff's 20%/same-duration figure (PLAN §5). The percentage is asserted here
-# because it is the one number in this product that two sources disagreed about,
-# and a flow that only checked "some percentage" would not have caught it.
+# because it is the one number in this product where the handoff and the FAQ
+# gave different figures, and a flow that only checked "some percentage" would
+# not have caught it.
 appId: com.emekaobah.migo
 ---
 - launchApp

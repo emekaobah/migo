@@ -42,7 +42,7 @@ yarn-error.*
 coverage/
 .scannerwork/
 
-# client design material — kept out of the public repo
+# imported design material — kept out of the public repo
 design/
 
 # local agent config

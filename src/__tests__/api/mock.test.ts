@@ -242,8 +242,8 @@ describe('extendLoan', () => {
     const quote = await settle(api.quoteExtension(), LATENCY.getLoan);
 
     // Decided from Migo's published FAQ, superseding the handoff's
-    // 20%/same-duration (PLAN §5). The screen renders `pct` directly, so this is the figure a
-    // borrower reads as "Pay today (30%)".
+    // 20%/same-duration (PLAN §5). The screen renders `pct` directly, so this
+    // is the figure a borrower reads as "Pay today (30%)".
     expect(quote!.pct).toBe(0.3);
     expect(quote!.days).toBe(30);
     expect(quote!.payToday).toBe(Math.round(outstanding * 0.3));

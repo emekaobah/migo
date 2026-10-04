@@ -11,13 +11,13 @@ import { color } from '@/theme';
  * repo and no vector original is available — OPEN-QUESTIONS #5.
  *
  * A wordmark drawn in type is deliberate: shipping an invented logo would be
- * worse than an obvious stand-in. When the asset lands, swap the body of this
- * component for an `expo-image` at the same 98:43 ratio; nothing else changes,
- * because every screen goes through here.
+ * worse than an obvious stand-in. If a vector logo is ever available, swap the
+ * body of this component for an `expo-image` at the same 98:43 ratio; nothing
+ * else changes, because every screen goes through here.
  *
  * The launcher icon and splash logo in `assets/images/` are rendered from this
  * same wordmark by `scripts/generate-brand-assets.py`, so the home screen and
- * the app agree. Re-run it after the vector lands.
+ * the app agree. Re-run it if the logo is replaced.
  *
  * The box hugs the glyphs rather than reserving the logo's 98:43 footprint.
  * Reserving it left the stand-in adrift: the type is narrower than 98:43, so a

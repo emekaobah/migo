@@ -94,7 +94,8 @@ describe('extend', () => {
   it('shows the published terms, every figure from the quote', async () => {
     const { queryByText } = await renderScreen();
 
-    // 30% carried 30 days — from Migo's published FAQ, superseding the handoff's 20%.
+    // 30% carried 30 days — from Migo's published FAQ, superseding the
+    // handoff's 20%.
     expect(queryByText('Pay today (30%)')).not.toBeNull();
     expect(queryByText("You'll owe after 30 days")).not.toBeNull();
 
