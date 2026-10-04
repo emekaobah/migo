@@ -78,8 +78,8 @@ export type Extension = {
  * Extension terms: pay `pct` of the outstanding now, the remainder carries for
  * `extendDays` with `rate` applied to the carried amount.
  *
- * **30% / 30 days, client-confirmed 2026-08-02** (OPEN-QUESTIONS #1). Both stay
- * parameters because a rate is a business input that will change again — the
+ * **30% / 30 days, decided from Migo's published FAQ** (OPEN-QUESTIONS #1).
+ * Both stay parameters because a rate is a business input that will change again — the
  * defaults live in `api/mock/fixtures.ts`, never inline in a screen.
  *
  * `extendFrom` is **the due date being extended past**, not the loan's original

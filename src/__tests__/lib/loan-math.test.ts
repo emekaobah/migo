@@ -114,7 +114,7 @@ describe('outstandingAfter / nextInstalment', () => {
   });
 });
 
-describe('computeExtension — 30% / 30 days, client-confirmed', () => {
+describe("computeExtension — 30% / 30 days, from Migo's published FAQ", () => {
   const PCT = 0.3;
   const DAYS = 30;
   const RATE = 1.16;

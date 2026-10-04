@@ -212,11 +212,12 @@ PLAN §8 calls the actual market.
 Recorded in `contrast.test.ts` rather than asserted, so the numbers live in the
 repo. **Needs:** a design call, not a code fix.
 
-### C. The FAQ never mentions the wallet
+### C. The FAQ never mentioned the wallet — closed
 
-"wallet" appears zero times across all 45 questions, while the entire repayment
-flow is wallet-based. A borrower searching Help for "wallet" gets the empty
-state. Tracked as OPEN-QUESTIONS #8; needs client content, not a synonym map.
+"wallet" appeared zero times across all 45 questions, while the entire
+repayment flow is wallet-based, so a borrower searching Help for "wallet" got
+the empty state. The FAQ's repayment answers now describe wallet repayment, and
+`faq-search.test.ts` asserts that searching "wallet" finds a repayment answer.
 
 ---
 
