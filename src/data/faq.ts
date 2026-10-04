@@ -102,13 +102,13 @@ export const FAQ: FaqSection[] = [
       {
         q: 'Do you deposit Migo loans into all banks?',
         a: [
-          'Most Nigerian banks are supported. When you accept a loan, the app lists the payout accounts on file and you choose which one the money goes to.',
+          'Most Nigerian banks are supported. When you accept a loan, you choose which of your payout accounts the money goes to, and you can add an account there if the one you want is not listed.',
         ],
       },
       {
         q: 'Can I get a Migo loan in two different bank accounts using the same phone number?',
         a: [
-          'You can have more than one payout account on file, as long as each is in the same name as your SIM registration. You can still only have one loan running at a time.',
+          'Yes. Tap Add an account on the payout account screen, enter the account number, and confirm with the code sent to the phone number registered to that account\'s BVN. Every account you add must be linked to your BVN. You can still only have one loan running at a time.',
         ],
       },
     ],

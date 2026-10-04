@@ -141,6 +141,11 @@ describe('faq search', () => {
     expect(results.map((s) => s.key)).toContain('loan-repayment');
   });
 
+  it('finds how to add a payout account, in the words the payout screen uses', async () => {
+    const results = await faqSource.search('add an account');
+    expect(results.map((s) => s.key)).toContain('accessing-migo-loans');
+  });
+
   it('returns nothing for a query that matches nothing', async () => {
     // The screen turns this into "Nothing matches that. Try another word, or
     // start a chat above."
