@@ -5,7 +5,8 @@ import { createMockChatTransport } from './mock/chat-transport';
 import type { ChatTransport } from './interfaces/chat-transport';
 
 /**
- * The single place the chat implementation is named (PLAN §2).
+ * The single place the chat implementation is named (PLAN §2). Today that is
+ * the scripted stand-in for the live-chat provider.
  *
  * A factory rather than a singleton because the scripted agent needs the loan
  * context to quote live figures, and that context lives in React state. A
