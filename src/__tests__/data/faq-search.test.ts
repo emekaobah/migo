@@ -52,14 +52,15 @@ describe('the bundled FAQ', () => {
 
 describe('the FAQ points borrowers inside the app', () => {
   // Help content outlives the URLs, inboxes and phone lines it names, so
-  // answers point to Migo support or the app's own screens instead.
+  // answers point to Migo support or the app's own screens instead. Questions
+  // are checked too: a title is shown as prominently as an answer.
   const text = FAQ.flatMap((s) => s.questions).flatMap((q) => [q.q, ...q.a]);
 
   it.each([
-    ['a web address', /\bwww\.|https?:\/\/|\.(?:money|ng|com)\b/i],
+    ['a web address', /\bwww\.|https?:\/\/|\w\.(?:money|ng|com|org|co|io)\b|\w\.[a-z]{2,}\//i],
     ['an email address', /\S+@\S+\.\S+/],
-    ['a phone number', /\+?\d[\d\s-]{9,}\d/],
-  ])('contains no answer with %s', (_, pattern) => {
+    ['a phone number', /\+?\(?\d[\d\s().-]{9,}\d/],
+  ])('contains no question or answer with %s', (_, pattern) => {
     expect(text.filter((line) => pattern.test(line))).toEqual([]);
   });
 });

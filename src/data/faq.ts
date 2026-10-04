@@ -102,13 +102,13 @@ export const FAQ: FaqSection[] = [
       {
         q: 'Do you deposit Migo loans into all banks?',
         a: [
-          'Most Nigerian banks are supported. When you add a payout account, the app only lists banks we can pay into, so any bank you can pick will work.',
+          'Most Nigerian banks are supported. When you accept a loan, the app lists the payout accounts on file and you choose which one the money goes to.',
         ],
       },
       {
         q: 'Can I get a Migo loan in two different bank accounts using the same phone number?',
         a: [
-          'You can save more than one payout account, as long as each is in the same name as your SIM registration. You can still only have one loan running at a time.',
+          'You can have more than one payout account on file, as long as each is in the same name as your SIM registration. You can still only have one loan running at a time.',
         ],
       },
     ],
@@ -120,7 +120,7 @@ export const FAQ: FaqSection[] = [
       {
         q: 'How much money can I borrow with Migo?',
         a: [
-          'It depends on your history with us. First loans start small, and offers grow as you repay, so regular borrowers see much larger amounts over time.',
+          'Anywhere from N750 to N1,000,000 and beyond, depending on your history with us. First loans start small, and offers grow as you repay, so regular borrowers see much larger amounts over time.',
         ],
       },
       {
@@ -241,7 +241,7 @@ export const FAQ: FaqSection[] = [
       {
         q: 'How much does it cost to take a Migo loan?',
         a: [
-          'It depends on the loan\'s length and your repayment history. Rates are not fixed: repaying early brings your interest down over time, and so does referring friends who borrow and repay.',
+          'Interest runs from 5% to 25%, depending on the loan\'s length and your repayment history. Rates are not fixed: repaying early brings your interest down over time, and so does referring friends who borrow and repay.',
         ],
       },
       {
@@ -283,7 +283,7 @@ export const FAQ: FaqSection[] = [
           '• Repay the balance by the due date.',
           '• Let Migo use your personal data, from sources such as your phone, your bank and credit bureaus, to decide what to offer you.',
           '• Pay the fees and penalties set out in the terms if you pay late.',
-          '• Allow Migo to contact people you know if it cannot reach you after the due date has passed.',
+          '• Allow Migo to message people you have called or texted if it cannot reach you after the due date has passed.',
           'The full terms are linked from Help. If any part is unclear, chat with Migo support and we will explain it.',
         ],
       },
