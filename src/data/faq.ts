@@ -1,19 +1,15 @@
 import type { FaqSection } from '@/api/interfaces/faq-source';
 
 /**
- * Migo's live FAQ — **verbatim** (HANDOFF §19).
+ * Migo's live FAQ — **verbatim** (HANDOFF §19), except where noted below.
  *
  * 10 sections, 45 questions, ported mechanically from the design bundle's
  * `faq-data.js` rather than retyped, so the wording cannot drift from what the
  * website publishes. **Do not edit these strings by hand.**
  *
- * ⚠ **The source contradicts itself on the extension rule.** "How do I extend
- * my loan?" says 30% of the outstanding balance; "I cannot pay but do not want
- * my offers affected" says 20%. Both are reproduced, because verbatim means
- * verbatim and silently correcting a client's published copy is not this
- * build's call to make. The `extend` screen follows the client-confirmed 30%
- * (PLAN §5), so one FAQ answer disagrees with it on the same device. Recorded
- * in design/OPEN-QUESTIONS.md.
+ * The two answers about extending a loan are the exception: they are written
+ * in this project's own words and state the terms the mock API quotes, which
+ * `faq-search.test.ts` enforces.
  *
  * In production this comes from the SalesIQ knowledge base, not a static file.
  */
@@ -185,7 +181,7 @@ export const FAQ: FaqSection[] = [
       {
         q: 'I cannot pay but do not want my offers affected, what do I do?',
         a: [
-          'To ensure your offers are not affected, you can make a partial payment of 20% of the total outstanding amount and get a 30-day extension.',
+          'Extend the loan rather than let the date pass. Paying 30% of your outstanding balance extends it, and whatever is left moves out by 30 days, so the loan is not overdue and a missed payment does not count against you.',
         ],
       },
     ],
@@ -215,7 +211,8 @@ export const FAQ: FaqSection[] = [
       {
         q: 'How do I extend my loan?',
         a: [
-          'You can extend your loan if you repay at least 30% of your total outstanding balance (principal + interest) before your due date. Your loan will be automatically extended and you don\'t need to contact us or request an extension directly. The extension will be applied by midnight on your original due date. Your new outstanding balance and repayment date will be shared with you. However, please note that a reduced charge will still apply. To make a payment towards extending your loan, visit Repay a Loan.',
+          'Tap Extend on your loan screen before your due date. To extend, you pay 30% of what you owe today, and the rest of the balance carries for 30 days to a new due date.',
+          'Before you confirm, the screen sets out what you pay now, what carries over and the new date. Interest applies to the part that carries over. If anything looks wrong, chat with Migo support from Help.',
         ],
       },
       {

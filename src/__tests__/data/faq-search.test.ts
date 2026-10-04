@@ -1,4 +1,5 @@
 import { faqSource } from '@/api/faq';
+import { EXTENSION } from '@/api/mock/fixtures';
 import { FAQ } from '@/data/faq';
 
 /**
@@ -47,24 +48,48 @@ describe('the bundled FAQ', () => {
       }),
     );
   });
+});
 
-  /**
-   * **The published FAQ contradicts itself on the extension rule**, and this
-   * test pins that rather than hiding it.
-   *
-   * PLAN §5 closed the handoff's ⚠ conflict on the basis that the FAQ says 30%.
-   * One answer does. Another says 20%. Both ship, because verbatim means
-   * verbatim — so the `extend` screen, which follows the client-confirmed 30%,
-   * disagrees with one FAQ answer on the same device.
-   *
-   * If this test ever fails, the source copy changed: check whether the client
-   * fixed the contradiction before deleting the test.
-   */
-  it('still contains the unresolved 20% / 30% extension contradiction', () => {
-    const everything = FAQ.flatMap((s) => s.questions.flatMap((q) => [q.q, ...q.a])).join(' ');
+/**
+ * The FAQ and the extend screen describe one rule, so a borrower reading Help
+ * is told the terms they will actually be quoted. The figures come from the
+ * same fixture the mock API quotes from, never from this file.
+ */
+describe('the FAQ on extensions', () => {
+  const pct = `${Math.round(EXTENSION.pct * 100)}%`;
+  const days = `${EXTENSION.days} days`;
 
-    expect(everything).toContain('repay at least 30% of your total outstanding balance');
-    expect(everything).toContain('partial payment of 20% of the total outstanding amount');
+  async function questions() {
+    return (await faqSource.sections()).flatMap((s) => s.questions);
+  }
+
+  async function answer(question: string): Promise<string> {
+    const item = (await questions()).find((q) => q.q === question);
+    expect(item).toBeDefined();
+    return item!.a.join(' ');
+  }
+
+  it.each([
+    'How do I extend my loan?',
+    'I cannot pay but do not want my offers affected, what do I do?',
+  ])('"%s" states the terms the API quotes', async (question) => {
+    const text = await answer(question);
+
+    expect(text).toContain(pct);
+    expect(text).toContain(days);
+  });
+
+  it('never states a different percentage for an extension', async () => {
+    const sentences = (await questions())
+      .flatMap((q) => q.a)
+      .flatMap((paragraph) => paragraph.split(/(?<=[.!?])\s+/))
+      .filter((sentence) => /exten/i.test(sentence));
+
+    // Other answers quote interest and fee percentages; only a percentage in a
+    // sentence about extending is an extension term.
+    const stated = sentences.flatMap((sentence) => sentence.match(/\d+%/g) ?? []);
+    expect(stated.length).toBeGreaterThan(0);
+    stated.forEach((figure) => expect(figure).toBe(pct));
   });
 });
 
