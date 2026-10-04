@@ -5,9 +5,9 @@ import { FAQ } from '@/data/faq';
 /**
  * The FAQ and its search (PLAN §8a, phase 7).
  *
- * The content is client copy reproduced verbatim, so these tests guard two
- * different things: that search actually reaches all of it, and that the copy
- * has not been quietly edited.
+ * The content is illustrative paraphrase that keeps the published FAQ's
+ * structure, so these tests guard two different things: that the structure
+ * survives rewording, and that search actually reaches all of it.
  */
 
 describe('the bundled FAQ', () => {
@@ -17,8 +17,8 @@ describe('the bundled FAQ', () => {
   });
 
   it('matches the handoff section breakdown exactly', () => {
-    // HANDOFF §19 lists these counts. A section gaining or losing a question
-    // means the source changed, which is worth noticing rather than absorbing.
+    // HANDOFF §19 lists these counts. Paraphrasing rewords answers; it never
+    // adds or drops a question, so a changed count is worth noticing.
     expect(FAQ.map((s) => [s.title, s.questions.length])).toEqual([
       ['About Migo', 1],
       ['Accessing Migo loans', 12],
@@ -47,6 +47,21 @@ describe('the bundled FAQ', () => {
         item.a.forEach((paragraph) => expect(paragraph.trim()).not.toBe(''));
       }),
     );
+  });
+});
+
+describe('the FAQ points borrowers inside the app', () => {
+  // Help content outlives the URLs, inboxes and phone lines it names, so
+  // answers point to Migo support or the app's own screens instead. Questions
+  // are checked too: a title is shown as prominently as an answer.
+  const text = FAQ.flatMap((s) => s.questions).flatMap((q) => [q.q, ...q.a]);
+
+  it.each([
+    ['a web address', /\bwww\.|https?:\/\/|\w\.(?:money|ng|com|org|co|io)\b|\w\.[a-z]{2,}\//i],
+    ['an email address', /\S+@\S+\.\S+/],
+    ['a phone number', /\+?\(?\d[\d\s().-]{9,}\d/],
+  ])('contains no question or answer with %s', (_, pattern) => {
+    expect(text.filter((line) => pattern.test(line))).toEqual([]);
   });
 });
 
@@ -119,6 +134,11 @@ describe('faq search', () => {
     const lower = await faqSource.search('migo');
     const upper = await faqSource.search('MIGO');
     expect(upper.map((s) => s.key)).toEqual(lower.map((s) => s.key));
+  });
+
+  it('finds a repayment answer for "wallet", the word the repay screen uses', async () => {
+    const results = await faqSource.search('wallet');
+    expect(results.map((s) => s.key)).toContain('loan-repayment');
   });
 
   it('returns nothing for a query that matches nothing', async () => {
