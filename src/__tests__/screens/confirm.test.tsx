@@ -96,6 +96,9 @@ async function renderScreen() {
   return utils;
 }
 
+/** Set by `installFakeTimers`, so teardown only advances timers it faked. */
+let fakeTimers = false;
+
 /**
  * Fake timers are installed *after* render — RNTL's async render and its
  * auto-cleanup both need the real queue, and the hold interval is only created
@@ -103,6 +106,7 @@ async function renderScreen() {
  * `conventions.test.tsx`.
  */
 function installFakeTimers() {
+  fakeTimers = true;
   jest.useFakeTimers({
     doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick', 'performance'],
   });
@@ -113,6 +117,9 @@ const HOLD_MS = 17 * 60;
 
 describe('confirm', () => {
   afterEach(() => {
+    // Only the hold tests install fake timers; advancing real ones just warns.
+    if (!fakeTimers) return;
+    fakeTimers = false;
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
   });
