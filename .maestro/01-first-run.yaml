@@ -1,9 +1,8 @@
 # Journey 1 — enrol → otp → bind → offers → confirm → success.
 #
-# The USSD detour is included rather than skipped: it is the path a borrower
-# takes when the code never arrives, which is the situation this product exists
-# to solve. Skipping it would test only the happy path of the thing whose
-# unhappy path is the point.
+# This flow takes the path where the code arrives. The USSD detour, which a
+# borrower takes when the code never arrives, is not covered here, though it is
+# the situation this product exists to solve.
 appId: com.emekaobah.migo
 ---
 - runFlow: helpers/reset.yaml
