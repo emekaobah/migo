@@ -73,8 +73,7 @@ export default function AddAccountScreen() {
   // bank and number it was for, so one that arrives after either has changed
   // is simply not shown — and "checking" is whatever has no answer yet.
   const key = bank && digits.length === ACCOUNT_DIGITS ? `${bank.id}:${digits}` : null;
-  const lookup: Lookup =
-    key === null ? { state: 'idle' } : answer?.key === key ? answer.lookup : { state: 'checking' };
+  const lookup = lookupFor(key, answer);
 
   useEffect(() => {
     if (!bank || digits.length !== ACCOUNT_DIGITS) return;
@@ -205,6 +204,13 @@ export default function AddAccountScreen() {
       </View>
     </Screen>
   );
+}
+
+/** What to show for the number on screen, given the last answer received. */
+function lookupFor(key: string | null, answer: { key: string; lookup: Lookup } | null): Lookup {
+  if (key === null) return { state: 'idle' };
+  if (answer?.key === key) return answer.lookup;
+  return { state: 'checking' };
 }
 
 function LookupResult({ lookup, bankName }: Readonly<{ lookup: Lookup; bankName: string }>) {
