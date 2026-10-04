@@ -65,7 +65,7 @@ const bankName = (bankId: string) => BANKS.find((b) => b.id === bankId)?.name ??
 const onFile = (bankId: string, number: string) =>
   allAccounts().some((a) => a.bank === bankName(bankId) && a.maskedNumber.endsWith(number.slice(-4)));
 
-const masked = (phone: string) => `${phone.slice(0, 4)}••••${phone.slice(-4)}`;
+const maskPhone = (phone: string) => `${phone.slice(0, 4)}••••${phone.slice(-4)}`;
 
 /**
  * The one place an extension is computed.
@@ -135,7 +135,7 @@ export const mockApi: MigoApi = {
     if (number === OTHER_BVN_ACCOUNT) {
       return after(LATENCY.requestCode, { ok: false, reason: 'different-bvn' });
     }
-    return after(LATENCY.requestCode, { ok: true, maskedPhone: masked(BVN_PHONE), resendIn: 60 });
+    return after(LATENCY.requestCode, { ok: true, maskedPhone: maskPhone(BVN_PHONE), resendIn: 60 });
   },
 
   /**

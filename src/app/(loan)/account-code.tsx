@@ -1,12 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
 import { Button, CodeBoxes, HeaderRow, InlineError, Keypad, Screen } from '@/components/ui';
-import { countdown } from '@/lib/format';
+import { OtpStatusStrip } from '@/features/enrolment/otp-status-strip';
+import { ACCOUNT_REFUSAL } from '@/features/loans/account-refusal';
 import { error as errorHaptic, success, tick } from '@/lib/haptics';
-import { color, radius, space, type } from '@/theme';
+import { useCountdown } from '@/lib/use-countdown';
+import { color, space, type } from '@/theme';
 
 const CODE_LENGTH = 6;
 
@@ -35,14 +37,9 @@ export default function AccountCodeScreen() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [maskedPhone, setMaskedPhone] = useState(params.maskedPhone);
-  const [resendIn, setResendIn] = useState(Number(params.resendIn) || 60);
+  const [resendIn, restartCountdown] = useCountdown(Number(params.resendIn) || 60);
   const checking = useRef(false);
-
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [resendIn]);
+  const resending = useRef(false);
 
   async function confirm(candidate: string) {
     if (checking.current) return;
@@ -68,15 +65,22 @@ export default function AccountCodeScreen() {
   }
 
   async function resend() {
+    if (resending.current) return;
+    resending.current = true;
     setError(null);
     try {
       const sent = await api.requestAccountCode(params.bankId, params.number);
-      if (sent.ok) {
-        setMaskedPhone(sent.maskedPhone);
-        setResendIn(sent.resendIn);
+      if (!sent.ok) {
+        errorHaptic();
+        setError(ACCOUNT_REFUSAL[sent.reason]);
+        return;
       }
+      setMaskedPhone(sent.maskedPhone);
+      restartCountdown(sent.resendIn);
     } catch {
       setError('We could not send a new code. Check your connection and try again.');
+    } finally {
+      resending.current = false;
     }
   }
 
@@ -108,9 +112,7 @@ export default function AccountCodeScreen() {
         <CodeBoxes value={code} />
 
         {resendIn > 0 ? (
-          <View style={styles.strip}>
-            <Text style={styles.stripText}>Resend in {countdown(resendIn)}</Text>
-          </View>
+          <OtpStatusStrip resendIn={resendIn} received={false} />
         ) : (
           <Button label="Send a new code" onPress={resend} variant="tonal" />
         )}
@@ -126,12 +128,4 @@ export default function AccountCodeScreen() {
 const styles = StyleSheet.create({
   body: { gap: space.lg, paddingTop: space.lg, paddingBottom: space.xl },
   lead: { ...type.body, color: color.textMuted },
-  strip: {
-    borderRadius: radius.panel,
-    paddingVertical: space.md,
-    paddingHorizontal: space.lg,
-    backgroundColor: color.surfaceAlt,
-    flexShrink: 0,
-  },
-  stripText: { ...type.caption, color: color.textMuted },
 });

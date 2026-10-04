@@ -127,6 +127,28 @@ describe('add-account', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it('says it is still checking when Continue comes before the name', async () => {
+    resolveAccount().mockReturnValue(new Promise(() => {}));
+    const screen = await renderScreen();
+    await pickBank(screen, 'Access Bank');
+    await typeNumber(screen, '0123456789');
+
+    await fireEvent.press(screen.getByLabelText('Continue'));
+
+    expect(screen.queryByText('Still checking the account. Try again in a moment.')).not.toBeNull();
+    expect(requestAccountCode()).not.toHaveBeenCalled();
+  });
+
+  it('offers a retry when the bank list will not load, rather than spinning', async () => {
+    (api.listBanks as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+    const screen = await renderScreen();
+
+    await waitFor(() => expect(screen.queryByLabelText('Try again')).not.toBeNull());
+    await fireEvent.press(screen.getByLabelText('Try again'));
+
+    await waitFor(() => expect(screen.queryByLabelText('Access Bank')).not.toBeNull());
+  });
+
   it('separates a failed lookup from an unknown account', async () => {
     resolveAccount().mockRejectedValue(new Error('offline'));
     const screen = await renderScreen();

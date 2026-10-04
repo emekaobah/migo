@@ -97,14 +97,17 @@ describe('account-code', () => {
   describe('resend', () => {
     // Only these tests install fake timers, so only they advance them.
     beforeEach(() => jest.useFakeTimers({ doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick'] }));
-    afterEach(() => {
-      jest.runOnlyPendingTimers();
+    afterEach(async () => {
+      // A restarted countdown leaves a tick pending; flushing it updates state.
+      await act(async () => {
+        jest.runOnlyPendingTimers();
+      });
       jest.useRealTimers();
     });
 
     it('counts down, then offers a new code', async () => {
       const screen = await renderScreen();
-      expect(screen.queryByText('Resend in 1:00')).not.toBeNull();
+      expect(screen.queryByText('Waiting for your code… Resend in 1:00')).not.toBeNull();
       expect(screen.queryByLabelText('Send a new code')).toBeNull();
 
       for (let s = 0; s < 60; s++) {
@@ -115,6 +118,22 @@ describe('account-code', () => {
 
       await fireEvent.press(screen.getByLabelText('Send a new code'));
       expect(requestAccountCode()).toHaveBeenCalledWith('access', '0123456789');
+      // The countdown restarts, so the button cannot be pressed twice.
+      expect(screen.queryByText('Waiting for your code… Resend in 1:00')).not.toBeNull();
+    });
+
+    it('says why when a new code is refused', async () => {
+      requestAccountCode().mockResolvedValue({ ok: false, reason: 'already-added' });
+      const screen = await renderScreen();
+      for (let s = 0; s < 60; s++) {
+        await act(async () => {
+          jest.advanceTimersByTime(1000);
+        });
+      }
+
+      await fireEvent.press(screen.getByLabelText('Send a new code'));
+
+      expect(screen.queryByText('That account is already on file.')).not.toBeNull();
     });
   });
 });

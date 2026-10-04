@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
@@ -28,6 +28,9 @@ export default function BanksScreen() {
 
   const [accounts, setAccounts] = useState<PayoutAccount[] | null>(null);
   const [selected, setSelected] = useState<string | null>(added ?? accountId);
+  // `added` stays in the route params after it has done its job. Applying it on
+  // every focus would undo a different account the borrower picked since.
+  const appliedAdded = useRef(added);
   const [error, setError] = useState<string | null>(null);
   // A failed fetch is not an empty list. Collapsing the two renders an empty
   // radio group with no explanation, and the only CTA then asks the borrower to
@@ -44,7 +47,10 @@ export default function BanksScreen() {
         .then((list) => {
           if (!active) return;
           setAccounts(list);
-          if (added) setSelected(added);
+          if (added && appliedAdded.current !== added) {
+            appliedAdded.current = added;
+            setSelected(added);
+          }
         })
         .catch(() => {
           if (active) setFailed(true);

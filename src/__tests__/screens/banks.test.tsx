@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import BanksScreen from '@/app/(loan)/banks';
@@ -8,15 +8,18 @@ import { LoanProvider } from '@/state/loan-context';
 
 const mockPush = jest.fn();
 const mockParams: { added?: string } = {};
+/** Re-runs the latest focus effect, as returning to a mounted screen does. */
+const mockFocus: { effect: (() => void | (() => void)) | null } = { effect: null };
 
 jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual('react');
   return {
     useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
     useLocalSearchParams: () => mockParams,
-    // Focus is mount in a single-screen render; the refetch-on-return path is
-    // the same effect running again.
-    useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect, [effect]),
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      mockFocus.effect = effect;
+      useEffect(effect, [effect]);
+    },
   };
 });
 
@@ -90,5 +93,26 @@ describe('banks — adding an account', () => {
 
     const row = await waitFor(() => getByLabelText('Access Bank ••6789, Tunde Adeyemi · Savings'));
     expect(row.props.accessibilityState).toEqual(expect.objectContaining({ selected: true }));
+  });
+
+  it('selects the added account once, not on every return', async () => {
+    listAccounts().mockResolvedValue([GTB, ACCESS]);
+    mockParams.added = ACCESS.id;
+    const screen = await renderScreen();
+    const gtbLabel = 'GTBank ••4412, Tunde Adeyemi · Savings';
+
+    await waitFor(() => expect(screen.getByLabelText(gtbLabel)).toBeTruthy());
+    await fireEvent.press(screen.getByLabelText(gtbLabel));
+
+    // Coming back to the screen (Add, then back out) refetches. The borrower's
+    // own pick must survive it, even though `added` is still in the params.
+    await act(async () => {
+      mockFocus.effect?.();
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText(gtbLabel).props.accessibilityState).toEqual(
+        expect.objectContaining({ selected: true }),
+      ),
+    );
   });
 });

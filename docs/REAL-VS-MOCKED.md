@@ -81,7 +81,8 @@ left mid-wait without stray state updates.
 - Adding a payout account: `resolveAccount` returns the borrower's name for any
   ten-digit number except two fixtures (one unknown to the bank, one held under
   someone else's BVN). `requestAccountCode` refuses an account already on file
-  or on a different BVN before sending anything, and otherwise "sends" a code
+  (judged by bank and last four digits, all a masked number allows) or on a
+  different BVN before sending anything, and otherwise "sends" a code
   to a fixed BVN phone number. `confirmAccount` accepts any six digits. **No
   bank is queried and no BVN is checked**: the "different BVN" refusal is one
   fixture number, not a comparison.
@@ -226,7 +227,7 @@ screens only through `MigoApi`, so no screen hard-codes a rate.
 | Extension: carry period | 30 days from the due date being extended past | `EXTENSION.days` |
 | Extension: rate on the carried amount | ×1.16 | `EXTENSION.rate` |
 | Borrower, payout accounts, wallet account numbers | Fictional | `BORROWER`, `ACCOUNTS`, `WALLETS` |
-| Banks a payout account can be added at; the BVN phone; the unknown and other-BVN account numbers | Fictional | `BANKS`, `BVN_PHONE`, `UNKNOWN_ACCOUNT`, `OTHER_BVN_ACCOUNT` |
+| Banks a payout account can be added at; the BVN phone; the unknown and other-BVN account numbers | Fictional | `BANKS`, `BVN_PHONE`, `UNKNOWN_ACCOUNT`, `OTHER_BVN_ACCOUNT`, `OTHER_BVN_HOLDER` |
 | Wallet banks | Sterling Bank, Fidelity Bank | `src/features/repayment/banks.ts` |
 | SMS code | `419736` | `createMockSmsRetriever` in `src/api/mock/sms-retriever.ts` |
 | USSD fallback code | `419 736` at enrolment; its first four digits on the new-device screen | `USSD` |

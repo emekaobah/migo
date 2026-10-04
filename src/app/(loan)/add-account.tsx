@@ -3,28 +3,22 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
-import type { AccountRefusal, Bank } from '@/api/types';
+import type { Bank } from '@/api/types';
 import {
   Button,
   Card,
   HeaderRow,
   InlineError,
   Keypad,
-  RadioRow,
   Row,
   Screen,
   Spinner,
 } from '@/components/ui';
+import { ACCOUNT_REFUSAL } from '@/features/loans/account-refusal';
 import { error as errorHaptic, tick } from '@/lib/haptics';
 import { color, space, type } from '@/theme';
 
 const ACCOUNT_DIGITS = 10;
-
-const REFUSAL: Record<AccountRefusal, string> = {
-  'already-added': 'That account is already on file.',
-  'different-bvn':
-    'This account is linked to a different BVN. Only accounts in your own name can receive a Migo loan.',
-};
 
 /** Where the name lookup has got to for the number on screen. */
 type Lookup =
@@ -51,6 +45,7 @@ export default function AddAccountScreen() {
   const router = useRouter();
 
   const [banks, setBanks] = useState<Bank[] | null>(null);
+  const [banksFailed, setBanksFailed] = useState(false);
   const [bank, setBank] = useState<Bank | null>(null);
   const [digits, setDigits] = useState('');
   /** The last lookup answer, with the bank and number it answered for. */
@@ -59,6 +54,7 @@ export default function AddAccountScreen() {
   const sending = useRef(false);
 
   useEffect(() => {
+    if (banksFailed) return;
     let active = true;
     api
       .listBanks()
@@ -66,12 +62,12 @@ export default function AddAccountScreen() {
         if (active) setBanks(list);
       })
       .catch(() => {
-        if (active) setError('We could not load the list of banks. Go back and try again.');
+        if (active) setBanksFailed(true);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [banksFailed]);
 
   // Look the holder up once the number is complete. The answer carries the
   // bank and number it was for, so one that arrives after either has changed
@@ -123,6 +119,8 @@ export default function AddAccountScreen() {
   async function onContinue() {
     if (!bank) return fail('Pick your bank first.');
     if (digits.length < ACCOUNT_DIGITS) return fail('Account numbers have 10 digits.');
+    if (lookup.state === 'checking') return fail('Still checking the account. Try again in a moment.');
+    // Unknown and failed lookups already say what is wrong, beside the number.
     if (lookup.state !== 'found' || sending.current) return;
 
     sending.current = true;
@@ -130,7 +128,7 @@ export default function AddAccountScreen() {
     try {
       const sent = await api.requestAccountCode(bank.id, digits);
       if (!sent.ok) {
-        fail(REFUSAL[sent.reason]);
+        fail(ACCOUNT_REFUSAL[sent.reason]);
         return;
       }
       router.push({
@@ -157,25 +155,31 @@ export default function AddAccountScreen() {
       {bank ? (
         <Row label="Bank" value={bank.name} chevron onPress={() => setBank(null)} />
       ) : (
-        <View style={styles.list} accessibilityRole="radiogroup">
-          {banks === null ? (
+        <View style={styles.list}>
+          {banksFailed ? (
+            <View style={styles.pending}>
+              <InlineError message="We could not load the list of banks. Check your connection." />
+              <Button label="Try again" onPress={() => setBanksFailed(false)} variant="tonal" />
+            </View>
+          ) : null}
+          {!banksFailed && banks === null ? (
             <View style={styles.pending}>
               <Spinner />
             </View>
-          ) : (
-            banks.map((b) => (
-              <RadioRow
-                key={b.id}
-                label={b.name}
-                labelRole="name"
-                selected={false}
-                onPress={() => {
-                  setError(null);
-                  setBank(b);
-                }}
-              />
-            ))
-          )}
+          ) : null}
+          {/* A bank is picked and the list folds away, so these are plain
+              choices that move on — not radios that stay on screen. */}
+          {banks?.map((b) => (
+            <Row
+              key={b.id}
+              label={b.name}
+              chevron
+              onPress={() => {
+                setError(null);
+                setBank(b);
+              }}
+            />
+          ))}
         </View>
       )}
 
@@ -230,7 +234,7 @@ function LookupResult({ lookup, bankName }: Readonly<{ lookup: Lookup; bankName:
 
 const styles = StyleSheet.create({
   h1: { ...type.h1, marginTop: space.sm, marginBottom: space.xl },
-  pending: { paddingVertical: space.xxl, alignItems: 'center' },
+  pending: { paddingVertical: space.xxl, alignItems: 'center', gap: space.md },
   list: { gap: space.sm },
   entry: { gap: space.lg, marginTop: space.lg },
   label: { ...type.caption, color: color.textMuted },
