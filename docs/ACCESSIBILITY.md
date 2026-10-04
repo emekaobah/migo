@@ -30,7 +30,7 @@ not met.
 | Pressed states on every tappable surface | ✅ one gap found and fixed (§6) |
 | Haptics on keypad, hold-complete, error | ✅ verified (§7) |
 | `pnpm test` passes | ✅ 277 across 20 suites |
-| **Seven Maestro flows written *and green*** | ⚠️ **run, not green** — see [E2E results](#e2e-results-close-out) |
+| **Seven Maestro flows written *and green*** | ⚠️ **run on the iOS simulator, not green; Android pending** — see [E2E results](#e2e-results-close-out) |
 | **TalkBack walkthrough of all four journeys** | ❌ **not done** |
 | **VoiceOver walkthrough of all four journeys** | ❌ **not done** |
 | **Low-end Android device pass** | ❌ **not done** |
@@ -48,7 +48,7 @@ loan.
 `.maestro/02-returning.yaml` still cannot run unattended under Maestro alone:
 `runScript` has no shell access, so the biometric match has to come from
 another shell. On Android that is `adb emu finger touch 1`. On the iOS
-simulator it *is* scriptable, contrary to what the flow's header says:
+simulator it is a `notifyutil` notification (the flow's header gives both):
 `xcrun simctl spawn <udid> notifyutil -p com.apple.BiometricKit_Sim.pearl.match`
 (see Manual checks). The flow is meant to stay out of the ordered suite in
 `config.yaml` for that reason. `03-pin-fallback.yaml` covers the same journey
@@ -58,7 +58,7 @@ by PIN.
 
 | Flow | Android | iOS |
 |---|---|---|
-| `01-first-run` | — | ✅ pass |
+| `01-first-run` | — | ✅ pass (with no Face ID enrolled on the simulator) |
 | `02-returning` | — | ❌ fail — run on its own with Face ID enrolled and the match sent from a shell: sign-in completes, but the app lands on offers, not `Your loan`, because the mock's loan does not survive the cold start |
 | `03-pin-fallback` | — | ❌ fail — PIN sign-in completes, then lands on offers, not `Your loan` (same cause) |
 | `04-repayment` | — | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
@@ -68,7 +68,7 @@ by PIN.
 
 iOS build: EAS profile `preview-simulator` (Release, not a dev client), EAS
 build `4edafb2b-dc3d-4848-b25b-10e0175dd811`, built remotely on 2026-10-04 from
-commit `c5a1b53` (`main` at `a5e921e` plus the new profile). Installed with
+`main` at `a5e921e` plus the new profile (EAS records the commit as `c5a1b53`). Installed with
 `xcrun simctl install` on an iPhone 16 simulator running iOS 18.3, and run with
 Maestro 2.10.0. A fresh install opens on enrolment. A deep link to the dev-only
 `kitchen-sink` route redirects back to it, so no developer screen is reachable.
@@ -86,7 +86,10 @@ the committed flows.
 Two other things showed up while running the suite:
 
 - Running `maestro test .maestro` with Maestro 2.10 ran all seven flows,
-  including `02-returning`. It did not apply the `config.yaml` list.
+  including `02-returning`, so the `config.yaml` list was not applied. The
+  likely cause is the file itself rather than Maestro: it is written as a flow
+  (`appId`, `---`, then `flows:`), so the `flows:` list in the second document
+  is probably never read, and it has no `executionOrder`. Not fixed here.
 - `01-first-run` only passes while no Face ID is enrolled on the simulator,
   which is the default. With Face ID enrolled, hold-to-accept also asks for
   Face ID, and the flow stalls at that prompt.
@@ -118,7 +121,9 @@ code:
 
 ### Manual checks
 
-- **Face ID returning sign-in (iOS simulator): ✅ pass.** Face ID was enrolled
+- **Face ID returning sign-in (iOS simulator): ✅ pass.** This checks the
+  biometric sign-in itself; where the app lands afterwards is the `02` row's
+  failure, not this check's. Face ID was enrolled
   with `notifyutil -s com.apple.BiometricKit.enrollmentChanged 1` (then `-p`).
   After enrolling in the app, a cold start showed the lock screen. Tapping the
   biometric target raised the system Face ID sheet.
