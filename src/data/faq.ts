@@ -253,7 +253,7 @@ export const FAQ: FaqSection[] = [
       {
         q: 'How is my Migo loan balance calculated?',
         a: [
-          'You pay the interest stated in your offer. Paying late adds a late fee of 5%, plus VAT on that fee, and the loan rolls over with further interest.',
+          'You pay the interest stated in your offer. Paying late adds a late fee of 5% of the amount borrowed, plus VAT on that fee, and the loan rolls over with further interest.',
           'Take a loan of N10,000 at 10% interest. Paid by the due date, you owe N11,000.',
           'Paid after the rollover, you owe N12,525: the N11,000, plus N1,000 of rollover interest, a N500 late fee and N25 of VAT on the fee.',
         ],
