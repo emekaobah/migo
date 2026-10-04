@@ -35,7 +35,7 @@ describe('chat openers', () => {
     });
 
     // The case the product exists for: a borrower stuck before there is a
-    // session still reaches a person, and she asks for something they can give.
+    // session still reaches support, and it asks for something they can give.
     expect(agent.text).toMatch(/not signed in/i);
     expect(agent.text).toMatch(/number/i);
   });
@@ -71,7 +71,7 @@ describe('the extension reply', () => {
     const reply = agentReply('Extend my loan', { ...WITH_LOAN, extension: null });
 
     expect(reply).not.toMatch(/no loan running/i);
-    expect(reply).toMatch(/I can see your loan/i);
+    expect(reply).toMatch(/can see your loan/i);
   });
 
   it('does say there is no loan when there genuinely is none', () => {
@@ -100,7 +100,7 @@ describe('scripted replies', () => {
       });
 
       expect(reply.length).toBeGreaterThan(0);
-      // The agent may say Migo will never ask for a code — she must never ask.
+      // The agent may say nobody will ask for a code — it must never ask itself.
       expect(reply).not.toMatch(/what is your (code|pin)/i);
       expect(reply).not.toMatch(/read me (the|your) (code|pin)/i);
     }

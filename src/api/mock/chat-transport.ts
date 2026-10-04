@@ -5,7 +5,9 @@ import { delay } from './delay';
 import { LATENCY } from './fixtures';
 
 /**
- * The scripted agent, behind `ChatTransport`.
+ * The scripted agent, behind `ChatTransport` — a local stand-in for the
+ * live-chat provider. Replies come from `@/data/chat-scripts`, which is
+ * illustrative wording, not a transcript; nothing leaves the device.
  *
  * Holds the conversation in memory for the life of the session: the handoff's
  * chat has no history to restore, and inventing persistence would model a

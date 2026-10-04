@@ -152,7 +152,7 @@ export default function ChatScreen() {
 
         <View>
           <Text style={styles.agentName}>{AGENT_NAME}</Text>
-          <Text style={styles.agentMeta}>Migo support · replies in ~2 min</Text>
+          <Text style={styles.agentMeta}>Scripted preview</Text>
         </View>
       </View>
 

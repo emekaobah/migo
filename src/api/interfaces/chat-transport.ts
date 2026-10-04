@@ -1,6 +1,8 @@
 /**
  * Support chat, behind an interface.
  *
+ * The only implementation is a scripted stand-in for the live-chat provider
+ * (`mock/chat-transport.ts`); no real support conversation sits behind it.
  * Built to the handoff's own bubble spec rather than embedding a vendor UI —
  * for a proposal that is the better outcome anyway, since the chat screen is
  * the thing being proposed.

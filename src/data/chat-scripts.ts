@@ -1,11 +1,15 @@
 import { fullDate, naira } from '@/lib/format';
+import { ENROL_CODE, NEW_DEVICE_CODE } from '@/lib/ussd';
 
 /**
- * The scripted support agent (HANDOFF §20).
+ * The scripted support agent (HANDOFF §20) — a local stand-in for the
+ * live-chat provider, not a record of real support conversations.
  *
  * Two scripts, as designed: signed in, where the agent already has loan context
- * and quotes live figures; and signed out, where she asks for the number. The
- * wording is the prototype's, with one deliberate departure noted below.
+ * and quotes live figures; and signed out, where it asks for the number. Every
+ * line is illustrative wording written for this build. The replies name no
+ * contact details; the only screens and codes they mention are the app's own,
+ * so a reply never points the borrower somewhere the app does not.
  *
  * These are **templates over facts**, not fixed strings. The prototype hard-
  * coded the extension at 20%; quoting a rate in chat copy is the same mistake
@@ -28,8 +32,11 @@ export type ChatFacts = {
 
 export type ScriptedMessage = { from: 'agent' | 'system'; text: string };
 
-/** Migo support, as the prototype names her. */
-export const AGENT_NAME = 'Amaka';
+/**
+ * A team, not a named person. A named agent would read like a transcript of a
+ * real conversation; this is a script standing in for whoever answers.
+ */
+export const AGENT_NAME = 'Migo support';
 
 export function opener(facts: ChatFacts): ScriptedMessage[] {
   const first = facts.firstName?.trim().split(/\s+/)[0] ?? '';
@@ -37,15 +44,15 @@ export function opener(facts: ChatFacts): ScriptedMessage[] {
 
   if (facts.authed && facts.loan) {
     const due = facts.loan.nextDueAt ? ` and the payment due ${fullDate(facts.loan.nextDueAt)}` : '';
-    greeting = `Hi ${first}, ${AGENT_NAME} here. I can see your ${naira(facts.loan.principal)} loan${due}. What can I help with?`;
+    greeting = `Hi ${first}, you are through to ${AGENT_NAME}. We can see your ${naira(facts.loan.principal)} loan${due}. What can we help with?`;
   } else if (facts.authed) {
-    greeting = `Hi ${first}, ${AGENT_NAME} here. You have no loan running at the moment. What can I help with?`;
+    greeting = `Hi ${first}, you are through to ${AGENT_NAME}. You have no loan running at the moment. What can we help with?`;
   } else {
-    greeting = `Hi, ${AGENT_NAME} here. You are not signed in yet, so start by telling me the number you are trying to use and I will look it up.`;
+    greeting = `Hi, you are through to ${AGENT_NAME}. You are not signed in yet, so tell us the number you are trying to use and we will look it up.`;
   }
 
   return [
-    { from: 'system', text: 'Chat started · Migo support' },
+    { from: 'system', text: 'Chat started · scripted preview' },
     { from: 'agent', text: greeting },
   ];
 }
@@ -84,17 +91,19 @@ export const SIGNED_IN_REPLIES: readonly QuickReply[] = [
 ] as const;
 
 const REPLIES: Record<string, (facts: ChatFacts) => string> = {
+  // The codes are the app's own constants, so this reply and the screens that
+  // show them cannot drift apart.
   'My code has not arrived': () =>
-    'Sorry about that — delivery can lag when the networks are busy. Dial *561# on that SIM and choose Set up app; the code shows on screen straight away. I will stay here while you try.',
+    `Texts can be slow to land. You can skip the wait: dial ${ENROL_CODE} from the SIM you are signing up with and the code appears on screen. Stay in this chat while you try.`,
 
   'I changed my phone': () =>
-    'No problem, and you do not need me to read you anything. On the new phone, dial *561*9# from your Migo SIM and confirm the four digits the app is showing. That authorises it in about a minute.',
+    `That is fine, and you will not need to read anything out to us. On the new phone, dial ${NEW_DEVICE_CODE} from the SIM on your account and check the digits match the ones the app shows. The new phone is then set up.`,
 
   'Wrong number on my account': () =>
-    'I can start that change. For your safety it needs an identity check first, so I will send the steps here — we will never ask for a code or PIN to do it.',
+    'We can help change it. It starts with a check that the account is yours, and the steps will appear in this chat. Nobody here will ever ask you for a code or PIN.',
 
   'Payment not showing': () =>
-    'Let me look. Transfers into your wallet match automatically, usually within two minutes. I can see one pending — I will confirm it here as soon as it lands, you do not need to send anything again.',
+    'Checking now. Transfers into your wallet are matched automatically, normally within a few minutes. One is still pending, and we will confirm here once it lands, so there is no need to send it again.',
 
   // The one reply that quotes money. Figures come from the live extension
   // terms, never a literal — the prototype's hard-coded 20% is exactly what
@@ -109,7 +118,7 @@ const REPLIES: Record<string, (facts: ChatFacts) => string> = {
     }
 
     if (!facts.extension) {
-      return 'I can see your loan, but I cannot pull the exact extension figures this second. Open Extend on your loan screen and it will show you what you would pay today.';
+      return 'We can see your loan, but cannot pull up the exact extension figures right now. Open Extend on your loan screen and it will show you what you would pay today.';
     }
 
     const pct = Math.round(facts.extension.pct * 100);
@@ -117,7 +126,7 @@ const REPLIES: Record<string, (facts: ChatFacts) => string> = {
   },
 
   'Change my bank': () =>
-    'Yes. Open Confirm or your account page and tap the payout account to switch it. It has to be an account in your own name.',
+    'Yes. On Confirm or your account page, tap the payout account to switch it. The new account must be in your own name.',
 };
 
 /** The agent's scripted answer to a chip, or a graceful fallback. */
@@ -125,5 +134,5 @@ export function agentReply(label: string, facts: ChatFacts): string {
   const reply = REPLIES[label];
   return reply
     ? reply(facts)
-    : 'Let me check that for you and come back here with an answer.';
+    : 'We will look into that and come back here with an answer.';
 }
