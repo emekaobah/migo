@@ -12,10 +12,10 @@ import { color, space, type } from '@/theme';
 /**
  * Screen 15 — extend rather than repay in full (HANDOFF §15).
  *
- * **30% of the outstanding, carried 30 days** — client-confirmed 2026-08-02,
- * superseding the handoff's 20%/same-duration figure, whose ⚠ conflict note is
- * now closed in favour of the published FAQ (PLAN §5). The FAQ text shipped in
- * this app says the same thing, so screen and FAQ agree on the same device.
+ * **30% of the outstanding, carried 30 days** — decided from Migo's published
+ * FAQ, superseding the handoff's 20%/same-duration figure, whose ⚠ conflict
+ * note is closed in favour of those terms (PLAN §5). The FAQ shipped in this
+ * app states the same terms, and `faq-search.test.ts` keeps the two in step.
  *
  * Every figure is quoted by the API rather than computed here. The percentage,
  * the window and the rate are business inputs that will change, and a screen

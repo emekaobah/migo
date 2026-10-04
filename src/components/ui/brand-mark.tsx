@@ -6,9 +6,9 @@ import { color } from '@/theme';
  * The Migo brand mark.
  *
  * **Placeholder.** The design calls for `migo-logo-white.png` (98×43, white on
- * transparent, client-supplied), rendered at 26px in headers and 32px on
- * `loading`, `contain`, never stretched. That file is not in this repo and the
- * vector original is still outstanding — OPEN-QUESTIONS #5.
+ * transparent, from the imported design bundle), rendered at 26px in headers
+ * and 32px on `loading`, `contain`, never stretched. That file is not in this
+ * repo and no vector original is available — OPEN-QUESTIONS #5.
  *
  * A wordmark drawn in type is deliberate: shipping an invented logo would be
  * worse than an obvious stand-in. When the asset lands, swap the body of this

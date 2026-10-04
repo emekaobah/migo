@@ -50,7 +50,7 @@ export const OTHER_BVN_HOLDER = 'Bola Okafor';
 export const BVN_PHONE = '08027654123';
 
 /**
- * Extension terms. **30% / 30 days, client-confirmed 2026-08-02**
+ * Extension terms. **30% / 30 days, decided from Migo's published FAQ**
  * (OPEN-QUESTIONS #1). Parameterised because a rate is a business input that
  * will change again — not because the decision is provisional.
  *
@@ -58,8 +58,8 @@ export const BVN_PHONE = '08027654123';
  * It is stated here rather than reused from the loan's own tenor multiplier: a
  * 90-day loan carries 1.37, and charging a 90-day rate for a 30-day extension
  * is a pricing decision nobody made. 1.16 is the published 30-day multiplier,
- * so a 30-day carry costs what 30 days costs. **Illustrative and unconfirmed —
- * the real extension rate is an open question for the client.**
+ * so a 30-day carry costs what 30 days costs. **Illustrative and assumed —
+ * Migo's real extension rate is not published.**
  */
 export const EXTENSION = { pct: 0.3, days: 30, rate: 1.16 } as const;
 

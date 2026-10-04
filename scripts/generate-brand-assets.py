@@ -2,7 +2,7 @@
 
 Not an invented logo: BrandMark draws "migo" in the system bold face, and this
 draws the identical wordmark so the launcher icon and splash match the app.
-Replace when the client's vector original lands (OPEN-QUESTIONS #5).
+Replace if a vector original of Migo's logo becomes available (OPEN-QUESTIONS #5).
 """
 
 from PIL import Image, ImageDraw, ImageFont
