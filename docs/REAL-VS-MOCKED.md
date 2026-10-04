@@ -12,7 +12,7 @@ The short version:
 
 | | |
 |---|---|
-| **Real** | Biometric prompts and capability detection, secure on-device storage, the salted PIN hash and its lockout counter, loan arithmetic, and the interaction design of all 21 screens on Android and iOS |
+| **Real** | Biometric prompts and capability detection, secure on-device storage, the salted PIN hash and its lockout counter, loan arithmetic, and the interaction design of all 23 screens on Android and iOS |
 | **Mocked** | Every server call. The offers and loans API, payment settlement, SMS code delivery, support chat, the FAQ source and device attestation all run locally, behind interfaces in `src/api/` |
 | **Illustrative** | Every figure: amounts, tenors, multipliers, the extension terms, account numbers, codes and names |
 
@@ -38,7 +38,7 @@ shipped code path. (The Jest suite mocks the native modules in
 | Session handling | `src/state/auth-context.tsx`, `src/app/(account)/signout.tsx` | `authed` is never persisted, so a cold start always lands on the lock screen. Sign-out clears the durable slice and the PIN material |
 | USSD hand-off | `src/lib/ussd.ts` | Opens the dialler with the code filled in via `tel:`. It never dials on the borrower's behalf |
 | Loan arithmetic | `src/lib/loan-math.ts` | Pure, unit-tested. Whole naira throughout, instalments always sum to the total, remainder on the last payment, extension dated from the instalment being extended past. The maths is real; the inputs it runs on are illustrative |
-| Interaction design | `src/app/`, `src/components/ui/`, `src/theme/` | 21 screens built natively for both platforms from one codebase, with platform-correct buttons, back behaviour and biometric copy. Accessibility status is in [`ACCESSIBILITY.md`](ACCESSIBILITY.md) |
+| Interaction design | `src/app/`, `src/components/ui/`, `src/theme/` | 23 screens built natively for both platforms from one codebase, with platform-correct buttons, back behaviour and biometric copy. Accessibility status is in [`ACCESSIBILITY.md`](ACCESSIBILITY.md) |
 
 ---
 
@@ -64,8 +64,9 @@ left mid-wait without stray state updates.
 ### 2.1 Offers and loans API
 
 **Interface.** `MigoApi` (`src/api/types.ts`): `requestCode`, `verifyCode`,
-`ussdCode`, `bindDevice`, `getOffers`, `listAccounts`, `acceptLoan`, `getLoan`,
-`getWallet`, `watchPayment`, `quoteExtension`, `extendLoan`. Wired in
+`ussdCode`, `bindDevice`, `getOffers`, `listAccounts`, `listBanks`,
+`resolveAccount`, `requestAccountCode`, `confirmAccount`, `acceptLoan`,
+`getLoan`, `getWallet`, `watchPayment`, `quoteExtension`, `extendLoan`. Wired in
 `src/api/client.ts` as `export const api: MigoApi = mockApi`.
 
 **What the mock does.**
@@ -75,7 +76,15 @@ left mid-wait without stray state updates.
 - `ussdCode` returns a fixed code.
 - `getOffers` returns the fixture tenors and amounts after 1.8 seconds. No credit
   decision is made.
-- `listAccounts` returns two fictional payout accounts.
+- `listAccounts` returns two fictional payout accounts, plus any added this
+  session.
+- Adding a payout account: `resolveAccount` returns the borrower's name for any
+  ten-digit number except two fixtures (one unknown to the bank, one held under
+  someone else's BVN). `requestAccountCode` refuses an account already on file
+  or on a different BVN before sending anything, and otherwise "sends" a code
+  to a fixed BVN phone number. `confirmAccount` accepts any six digits. **No
+  bank is queried and no BVN is checked**: the "different BVN" refusal is one
+  fixture number, not a comparison.
 - `acceptLoan` builds a loan locally with `loan-math` and keeps it in a module
   variable. Nothing is disbursed.
 - `getWallet` returns a fixture account number for the chosen bank, quoting the
@@ -83,14 +92,15 @@ left mid-wait without stray state updates.
 - `quoteExtension` and `extendLoan` compute the extension through one shared
   function, so the quoted figures are the applied figures.
 
-There is one borrower and one loan, held in memory. **The loan does not survive
-an app restart**; the enrolment state does, because that is in SecureStore.
+There is one borrower and one loan, held in memory. **The loan and any added
+accounts do not survive an app restart**; the enrolment state does, because that is in SecureStore.
 
 **Production replacement.** An HTTP client implementing `MigoApi`, assigned in
 `src/api/client.ts`. `src/api/mock/` is then deleted. That needs, from Migo:
 the real endpoints, an auth scheme bound to the device credential, an error
 model (the mock never fails, so error paths are only exercised in tests), real
-offer and pricing data, real payout accounts, and loan state that persists
+offer and pricing data, real payout accounts (a bank name lookup, and BVN matching against the account
+the bank returns), and loan state that persists
 server-side. The interface was shaped from the screens' needs, not from a real
 contract, so expect it to change at the edges when one exists.
 
@@ -189,7 +199,7 @@ Not done:
 | **Server attestation** | None | Play Integrity (Android) and App Attest / DeviceCheck (iOS), verified server-side |
 | **Certificate pinning** | None. There is no backend connection to pin | Pinning on the API client once one exists |
 | **New-device authorisation** | The `newdevice` screen asks the borrower to dial a USSD code, then trusts an "I've authorised it" button and marks the device bound locally | Server confirmation that the USSD session completed on the account's SIM before the device is re-bound |
-| **OTP verification** | Any six-character code passes | Server-side verification with expiry and rate limits |
+| **OTP verification** | Any six-character code passes, for sign-in and for adding a payout account | Server-side verification with expiry and rate limits |
 | **PIN hashing strength** | One round of salted SHA-256. A six-digit PIN falls to brute force quickly for anyone who extracts the stored hash and salt | A memory-hard KDF, or better, the PIN unlocking a hardware-held key that never leaves the device |
 | **PIN lockout reset** | The counter is cleared only by a correct PIN or by setting a new PIN. After a lockout the PIN path stays locked; biometrics still works | A server-driven reset tied to re-authorisation |
 | **Loan acceptance without biometrics** | On a handset with no usable sensor, hold-to-accept submits without a second check | A PIN re-entry, or a key signature, on every acceptance |
@@ -216,6 +226,7 @@ screens only through `MigoApi`, so no screen hard-codes a rate.
 | Extension: carry period | 30 days from the due date being extended past | `EXTENSION.days` |
 | Extension: rate on the carried amount | ×1.16 | `EXTENSION.rate` |
 | Borrower, payout accounts, wallet account numbers | Fictional | `BORROWER`, `ACCOUNTS`, `WALLETS` |
+| Banks a payout account can be added at; the BVN phone; the unknown and other-BVN account numbers | Fictional | `BANKS`, `BVN_PHONE`, `UNKNOWN_ACCOUNT`, `OTHER_BVN_ACCOUNT` |
 | Wallet banks | Sterling Bank, Fidelity Bank | `src/features/repayment/banks.ts` |
 | SMS code | `419736` | `createMockSmsRetriever` in `src/api/mock/sms-retriever.ts` |
 | USSD fallback code | `419 736` at enrolment; its first four digits on the new-device screen | `USSD` |
