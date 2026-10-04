@@ -1,6 +1,6 @@
 import { api } from '@/api/client';
 import { delay } from '@/api/mock/delay';
-import { resetMockApi } from '@/api/mock';
+import { resetMockApi, restartMockApi } from '@/api/mock';
 import {
   ACCOUNTS,
   AMOUNTS,
@@ -13,6 +13,9 @@ import {
   UNKNOWN_ACCOUNT,
 } from '@/api/mock/fixtures';
 import { addDays, outstandingAfter } from '@/lib/loan-math';
+import { clear as signOutStorage } from '@/state/persistence';
+
+import { secureStoreMock } from '../setup';
 
 /**
  * Contract conformance and cancellation (PLAN §8a).
@@ -21,8 +24,8 @@ import { addDays, outstandingAfter } from '@/lib/loan-math';
  * mock reproduces the prototype's latencies on purpose. Fake timers keep the
  * behaviour and drop the waiting.
  */
-beforeEach(() => {
-  resetMockApi();
+beforeEach(async () => {
+  await resetMockApi();
   jest.useFakeTimers({ doNotFake: ['queueMicrotask', 'setImmediate', 'nextTick'] });
 });
 
@@ -187,10 +190,13 @@ describe('adding a payout account', () => {
     expect(await settle(api.listAccounts(), LATENCY.listAccounts)).toEqual(ACCOUNTS);
   });
 
-  it('forgets added accounts on reset, as a restart would', async () => {
-    await settle(api.confirmAccount(bank.id, number, '123456'), LATENCY.verifyCode);
-    resetMockApi();
-    expect(await settle(api.listAccounts(), LATENCY.listAccounts)).toEqual(ACCOUNTS);
+  it('keeps an added account across a restart', async () => {
+    const added = await settle(api.confirmAccount(bank.id, number, '123456'), LATENCY.verifyCode);
+    restartMockApi();
+    expect(await settle(api.listAccounts(), LATENCY.listAccounts)).toEqual([
+      ...ACCOUNTS,
+      (added as { account: unknown }).account,
+    ]);
   });
 });
 
@@ -319,6 +325,77 @@ describe('extendLoan', () => {
   it('rejects a percentage passed as 30 instead of 0.3', async () => {
     await loanWithOnePaid();
     await expect(api.extendLoan(30)).rejects.toThrow(RangeError);
+  });
+});
+
+/**
+ * A real server keeps the loan when the app is killed. `restartMockApi` is
+ * what a cold start does to the mock — it forgets what it holds in memory — so
+ * whatever comes back after it was read from storage.
+ */
+describe('surviving a restart', () => {
+  async function takeLoan() {
+    const accounts = await settle(api.listAccounts(), LATENCY.listAccounts);
+    return settle(
+      api.acceptLoan({ tenor: TENORS[3], principal: 99_600, accountId: accounts[0].id }, 'sig'),
+      LATENCY.acceptLoan,
+    );
+  }
+
+  it('returns the same loan, balance and schedule after a restart', async () => {
+    const loan = await takeLoan();
+    restartMockApi();
+
+    const after = await settle(api.getLoan(), LATENCY.getLoan);
+    expect(after).toEqual(loan);
+    // Dates come back as dates, not the strings JSON carries them as.
+    expect(after!.schedule[0].dueAt).toBeInstanceOf(Date);
+  });
+
+  it('keeps a repayment', async () => {
+    await takeLoan();
+    const wallet = await settle(api.getWallet('sterling'), LATENCY.getWallet);
+    await settle(api.watchPayment(wallet).promise, LATENCY.watchPayment);
+    restartMockApi();
+
+    expect((await settle(api.getLoan(), LATENCY.getLoan))?.paidCount).toBe(1);
+  });
+
+  it('keeps an extension', async () => {
+    await takeLoan();
+    const extended = await settle(api.extendLoan(EXTENSION.pct), LATENCY.extendLoan);
+    restartMockApi();
+
+    const after = await settle(api.getLoan(), LATENCY.getLoan);
+    expect(after).toEqual(extended);
+    expect(after!.extendedTo).toBeInstanceOf(Date);
+  });
+
+  it('keeps the loan when the borrower signs out, as a server would', async () => {
+    const loan = await takeLoan();
+    await signOutStorage();
+    restartMockApi();
+
+    await expect(settle(api.getLoan(), LATENCY.getLoan)).resolves.toEqual(loan);
+  });
+
+  it('starts empty when what is stored cannot be read', async () => {
+    secureStoreMock.seed('migo.mock-server.v1', '{ not json');
+    restartMockApi();
+
+    await expect(settle(api.getLoan(), LATENCY.getLoan)).resolves.toBeNull();
+    expect(await settle(api.listAccounts(), LATENCY.listAccounts)).toEqual(ACCOUNTS);
+  });
+
+  it('drops a stored loan whose dates did not survive', async () => {
+    const loan = await takeLoan();
+    secureStoreMock.seed(
+      'migo.mock-server.v1',
+      JSON.stringify({ loan: { ...loan, schedule: [{ index: 1, amount: 1, dueAt: 'soon' }] }, addedAccounts: [] }),
+    );
+    restartMockApi();
+
+    await expect(settle(api.getLoan(), LATENCY.getLoan)).resolves.toBeNull();
   });
 });
 

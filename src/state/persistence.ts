@@ -16,8 +16,9 @@ import * as SecureStore from 'expo-secure-store';
  * returns rather than persisting its own copy. An earlier version carried
  * `loanTaken`, `paidCount`, `extended` and `payoutAccountId` here, but nothing
  * read them — two sources of truth for the same facts, the durable one frozen
- * at its defaults. When the mock needs to survive a restart, that belongs in
- * the mock, behind `MigoApi`, so the real HTTP client is still a drop-in.
+ * at its defaults. The mock survives a restart by storing its own state,
+ * behind `MigoApi` (`api/mock/server-store.ts`), so the real HTTP client is
+ * still a drop-in.
  */
 
 const KEY = 'migo.durable.v1';

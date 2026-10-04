@@ -86,15 +86,19 @@ left mid-wait without stray state updates.
   to a fixed BVN phone number. `confirmAccount` accepts any six digits. **No
   bank is queried and no BVN is checked**: the "different BVN" refusal is one
   fixture number, not a comparison.
-- `acceptLoan` builds a loan locally with `loan-math` and keeps it in a module
-  variable. Nothing is disbursed.
+- `acceptLoan` builds a loan locally with `loan-math`. Nothing is disbursed.
 - `getWallet` returns a fixture account number for the chosen bank, quoting the
   next instalment as the amount due.
 - `quoteExtension` and `extendLoan` compute the extension through one shared
   function, so the quoted figures are the applied figures.
 
-There is one borrower and one loan, held in memory. **The loan and any added
-accounts do not survive an app restart**; the enrolment state does, because that is in SecureStore.
+There is one borrower and one loan. **The loan, its repayments and extension,
+and any added accounts survive an app restart**: the mock writes them to
+SecureStore (`src/api/mock/server-store.ts`) and reads them back on the first
+call after a cold start. That storage stands in for a server's database. It is
+not a production design, and it goes when `src/api/mock/` does. Signing out
+leaves it alone, as a server would, so the loan is still there once the phone is
+authorised again.
 
 **Production replacement.** An HTTP client implementing `MigoApi`, assigned in
 `src/api/client.ts`. `src/api/mock/` is then deleted. That needs, from Migo:

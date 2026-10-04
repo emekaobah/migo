@@ -36,6 +36,7 @@ import {
   USSD,
   WALLETS,
 } from './fixtures';
+import { clearServer, EMPTY_SERVER, loadServer, saveServer, type ServerState } from './server-store';
 
 /**
  * The mock `MigoApi`.
@@ -48,13 +49,31 @@ import {
  * like an instant local function.
  */
 
-/** The single loan this build tracks. Server state stands in for a database. */
-let currentLoan: Loan | null = null;
+/**
+ * The loan and added accounts, as a server would hold them.
+ *
+ * Read from storage on the first call after a cold start, then held here; every
+ * change is written back, so a restart finds what was left (`server-store.ts`).
+ */
+let held: Promise<ServerState> | null = null;
 
-/** Accounts added this session, after the seeded ones. Lost on restart. */
-let addedAccounts: PayoutAccount[] = [];
+const server = () => (held ??= loadServer());
 
-const allAccounts = () => [...ACCOUNTS, ...addedAccounts];
+async function commit(next: ServerState) {
+  held = Promise.resolve(next);
+  await saveServer(next);
+}
+
+/**
+ * Answers after `ms`, timed from the call rather than from when storage has
+ * been read — so a slow read never lengthens the prototype's latencies.
+ */
+async function respond<T>(ms: number, compute: () => Promise<T>): Promise<T> {
+  const [value] = await Promise.all([compute(), after(ms, null)]);
+  return value;
+}
+
+const allAccounts = (state: ServerState) => [...ACCOUNTS, ...state.addedAccounts];
 
 const bankName = (bankId: string) => BANKS.find((b) => b.id === bankId)?.name ?? bankId;
 
@@ -62,8 +81,8 @@ const bankName = (bankId: string) => BANKS.find((b) => b.id === bankId)?.name ??
  * Seeded accounts only carry a masked number, so "already on file" can only
  * mean the same bank and the same last four digits.
  */
-const onFile = (bankId: string, number: string) =>
-  allAccounts().some((a) => a.bank === bankName(bankId) && a.maskedNumber.endsWith(number.slice(-4)));
+const onFile = (state: ServerState, bankId: string, number: string) =>
+  allAccounts(state).some((a) => a.bank === bankName(bankId) && a.maskedNumber.endsWith(number.slice(-4)));
 
 const maskPhone = (phone: string) => `${phone.slice(0, 4)}••••${phone.slice(-4)}`;
 
@@ -110,7 +129,7 @@ export const mockApi: MigoApi = {
   },
 
   async listAccounts(): Promise<PayoutAccount[]> {
-    return after(LATENCY.listAccounts, allAccounts());
+    return respond(LATENCY.listAccounts, async () => allAccounts(await server()));
   },
 
   async listBanks(): Promise<Bank[]> {
@@ -129,13 +148,11 @@ export const mockApi: MigoApi = {
    * for "someone else's account".
    */
   async requestAccountCode(bankId: string, number: string): Promise<AccountCodeRequest> {
-    if (onFile(bankId, number)) {
-      return after(LATENCY.requestCode, { ok: false, reason: 'already-added' });
-    }
-    if (number === OTHER_BVN_ACCOUNT) {
-      return after(LATENCY.requestCode, { ok: false, reason: 'different-bvn' });
-    }
-    return after(LATENCY.requestCode, { ok: true, maskedPhone: maskPhone(BVN_PHONE), resendIn: 60 });
+    return respond(LATENCY.requestCode, async (): Promise<AccountCodeRequest> => {
+      if (onFile(await server(), bankId, number)) return { ok: false, reason: 'already-added' };
+      if (number === OTHER_BVN_ACCOUNT) return { ok: false, reason: 'different-bvn' };
+      return { ok: true, maskedPhone: maskPhone(BVN_PHONE), resendIn: 60 };
+    });
   },
 
   /**
@@ -143,41 +160,47 @@ export const mockApi: MigoApi = {
    * again: a server cannot trust that the code request came first.
    */
   async confirmAccount(bankId: string, number: string, code: string) {
-    const refused = code.length !== 6 || onFile(bankId, number) || number === OTHER_BVN_ACCOUNT;
-    if (refused) return after(LATENCY.verifyCode, { ok: false as const });
+    return respond(LATENCY.verifyCode, async () => {
+      const state = await server();
+      const refused = code.length !== 6 || onFile(state, bankId, number) || number === OTHER_BVN_ACCOUNT;
+      if (refused) return { ok: false as const };
 
-    const account: PayoutAccount = {
-      id: `${bankId}-${number.slice(-4)}`,
-      bank: bankName(bankId),
-      maskedNumber: `••${number.slice(-4)}`,
-      holder: BORROWER.fullName,
-      type: 'Savings',
-    };
-    addedAccounts = [...addedAccounts, account];
-    return after(LATENCY.verifyCode, { ok: true as const, account });
+      const account: PayoutAccount = {
+        id: `${bankId}-${number.slice(-4)}`,
+        bank: bankName(bankId),
+        maskedNumber: `••${number.slice(-4)}`,
+        holder: BORROWER.fullName,
+        type: 'Savings',
+      };
+      await commit({ ...state, addedAccounts: [...state.addedAccounts, account] });
+      return { ok: true as const, account };
+    });
   },
 
   async acceptLoan(selection: OfferSelection): Promise<Loan> {
-    const account = allAccounts().find((a) => a.id === selection.accountId) ?? ACCOUNTS[0];
-    const total = totalRepayable(selection.principal, selection.tenor.multiplier);
+    return respond(LATENCY.acceptLoan, async () => {
+      const state = await server();
+      const account = allAccounts(state).find((a) => a.id === selection.accountId) ?? ACCOUNTS[0];
+      const total = totalRepayable(selection.principal, selection.tenor.multiplier);
 
-    const loan: Loan = {
-      id: `loan-${selection.principal}-${selection.tenor.days}`,
-      principal: selection.principal,
-      total,
-      tenor: selection.tenor,
-      schedule: buildSchedule(selection.principal, selection.tenor, new Date()),
-      paidCount: 0,
-      disbursedTo: account,
-      extendedTo: null,
-    };
+      const loan: Loan = {
+        id: `loan-${selection.principal}-${selection.tenor.days}`,
+        principal: selection.principal,
+        total,
+        tenor: selection.tenor,
+        schedule: buildSchedule(selection.principal, selection.tenor, new Date()),
+        paidCount: 0,
+        disbursedTo: account,
+        extendedTo: null,
+      };
 
-    currentLoan = loan;
-    return after(LATENCY.acceptLoan, loan);
+      await commit({ ...state, loan });
+      return loan;
+    });
   },
 
   async getLoan(): Promise<Loan | null> {
-    return after(LATENCY.getLoan, currentLoan);
+    return respond(LATENCY.getLoan, async () => (await server()).loan);
   },
 
   /**
@@ -190,12 +213,11 @@ export const mockApi: MigoApi = {
    * this payment: ₦Y") is explicit that X is the instalment.
    */
   async getWallet(bank: WalletBank): Promise<Wallet> {
-    const due = currentLoan ? nextInstalment(currentLoan.schedule, currentLoan.paidCount) : null;
+    return respond(LATENCY.getWallet, async () => {
+      const { loan } = await server();
+      const due = loan ? nextInstalment(loan.schedule, loan.paidCount) : null;
 
-    return after(LATENCY.getWallet, {
-      bank,
-      ...WALLETS[bank],
-      amountDue: due?.amount ?? 0,
+      return { bank, ...WALLETS[bank], amountDue: due?.amount ?? 0 };
     });
   },
 
@@ -211,9 +233,10 @@ export const mockApi: MigoApi = {
     });
 
     return {
-      promise: pending.promise.then((event) => {
-        if (currentLoan) {
-          currentLoan = { ...currentLoan, paidCount: currentLoan.paidCount + 1 };
+      promise: pending.promise.then(async (event) => {
+        const state = await server();
+        if (state.loan) {
+          await commit({ ...state, loan: { ...state.loan, paidCount: state.loan.paidCount + 1 } });
         }
         return event;
       }),
@@ -232,21 +255,24 @@ export const mockApi: MigoApi = {
    * and the `active` screen reads exactly that.
    */
   async quoteExtension(): Promise<ExtensionQuote | null> {
-    if (!currentLoan) return after(LATENCY.getLoan, null);
+    return respond(LATENCY.getLoan, async () => {
+      const { loan } = await server();
+      if (!loan) return null;
 
-    const { outstanding, payToday, carried, newOutstanding, newDueAt } = extensionFor(
-      currentLoan,
-      EXTENSION.pct,
-    );
+      const { outstanding, payToday, carried, newOutstanding, newDueAt } = extensionFor(
+        loan,
+        EXTENSION.pct,
+      );
 
-    return after(LATENCY.getLoan, {
-      pct: EXTENSION.pct,
-      days: EXTENSION.days,
-      outstanding,
-      payToday,
-      carried,
-      newOutstanding,
-      newDueAt,
+      return {
+        pct: EXTENSION.pct,
+        days: EXTENSION.days,
+        outstanding,
+        payToday,
+        carried,
+        newOutstanding,
+        newDueAt,
+      };
     });
   },
 
@@ -254,36 +280,49 @@ export const mockApi: MigoApi = {
   // unreachable through the typed `api` object — dead code that reads like a
   // fallback. Callers pass the `pct` their quote was priced at.
   async extendLoan(pct: number): Promise<Loan> {
-    if (!currentLoan) throw new Error('no loan to extend');
+    return respond(LATENCY.extendLoan, async () => {
+      const state = await server();
+      const current = state.loan;
+      if (!current) throw new Error('no loan to extend');
 
-    const { outstanding, ...extension } = extensionFor(currentLoan, pct);
+      const { outstanding, ...extension } = extensionFor(current, pct);
 
-    // Everything paid across the loan's whole life, including any earlier
-    // extension's `payToday`. Deriving this by slicing the schedule looks
-    // equivalent and is not: an extension resets `paidCount` to 0 and replaces
-    // the schedule, so from the second extension on the slice is empty and the
-    // loan silently understates what it has cost. `total - outstanding` holds
-    // at every point, starting from `acceptLoan` where total is the schedule's
-    // sum and nothing is yet paid.
-    const alreadyRepaid = currentLoan.total - outstanding;
+      // Everything paid across the loan's whole life, including any earlier
+      // extension's `payToday`. Deriving this by slicing the schedule looks
+      // equivalent and is not: an extension resets `paidCount` to 0 and replaces
+      // the schedule, so from the second extension on the slice is empty and the
+      // loan silently understates what it has cost. `total - outstanding` holds
+      // at every point, starting from `acceptLoan` where total is the schedule's
+      // sum and nothing is yet paid.
+      const alreadyRepaid = current.total - outstanding;
 
-    currentLoan = {
-      ...currentLoan,
-      // The old schedule is settled: instalments already cleared, plus today's
-      // payment against the rest. What is left is one carried payment.
-      schedule: [{ index: 1, amount: extension.newOutstanding, dueAt: extension.newDueAt }],
-      paidCount: 0,
-      // What the loan will have cost in total, once extended.
-      total: alreadyRepaid + extension.payToday + extension.newOutstanding,
-      extendedTo: extension.newDueAt,
-    };
+      const loan: Loan = {
+        ...current,
+        // The old schedule is settled: instalments already cleared, plus today's
+        // payment against the rest. What is left is one carried payment.
+        schedule: [{ index: 1, amount: extension.newOutstanding, dueAt: extension.newDueAt }],
+        paidCount: 0,
+        // What the loan will have cost in total, once extended.
+        total: alreadyRepaid + extension.payToday + extension.newOutstanding,
+        extendedTo: extension.newDueAt,
+      };
 
-    return after(LATENCY.extendLoan, currentLoan);
+      await commit({ ...state, loan });
+      return loan;
+    });
   },
 };
 
-/** Test affordance — resets the stand-in server state between cases. */
-export function resetMockApi() {
-  currentLoan = null;
-  addedAccounts = [];
+/** Test affordance — empties the stand-in server, in memory and in storage. */
+export async function resetMockApi() {
+  held = Promise.resolve(EMPTY_SERVER);
+  await clearServer();
+}
+
+/**
+ * Test affordance — what a cold start does to the mock: forgets what it holds
+ * in memory, so the next call reads storage again.
+ */
+export function restartMockApi() {
+  held = null;
 }
