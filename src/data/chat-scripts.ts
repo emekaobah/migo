@@ -7,9 +7,9 @@ import { ENROL_CODE, NEW_DEVICE_CODE } from '@/lib/ussd';
  *
  * Two scripts, as designed: signed in, where the agent already has loan context
  * and quotes live figures; and signed out, where it asks for the number. Every
- * line is illustrative wording written for this build, and the only specifics
- * it names are the app's own screens and codes, so a reply never points the
- * borrower somewhere the app does not.
+ * line is illustrative wording written for this build. The replies name no
+ * contact details; the only screens and codes they mention are the app's own,
+ * so a reply never points the borrower somewhere the app does not.
  *
  * These are **templates over facts**, not fixed strings. The prototype hard-
  * coded the extension at 20%; quoting a rate in chat copy is the same mistake
