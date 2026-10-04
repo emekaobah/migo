@@ -1,7 +1,17 @@
 import { api } from '@/api/client';
 import { delay } from '@/api/mock/delay';
 import { resetMockApi } from '@/api/mock';
-import { AMOUNTS, EXTENSION, LATENCY, TENORS } from '@/api/mock/fixtures';
+import {
+  ACCOUNTS,
+  AMOUNTS,
+  BANKS,
+  BORROWER,
+  EXTENSION,
+  LATENCY,
+  OTHER_BVN_ACCOUNT,
+  TENORS,
+  UNKNOWN_ACCOUNT,
+} from '@/api/mock/fixtures';
 import { addDays, outstandingAfter } from '@/lib/loan-math';
 
 /**
@@ -102,6 +112,85 @@ describe('contract', () => {
 
   it('rejects extending when there is no loan', async () => {
     await expect(api.extendLoan(0.3)).rejects.toThrow(/no loan/i);
+  });
+});
+
+describe('adding a payout account', () => {
+  const bank = BANKS.find((b) => b.name === 'Access Bank')!;
+  const number = '0123456789';
+
+  it('lists the banks a payout account can be added at', async () => {
+    const banks = await settle(api.listBanks(), LATENCY.listBanks);
+    expect(banks).toEqual(BANKS);
+    expect(new Set(banks.map((b) => b.id)).size).toBe(banks.length);
+  });
+
+  it('resolves the account holder before anything is sent', async () => {
+    await expect(settle(api.resolveAccount(bank.id, number), LATENCY.resolveAccount)).resolves.toEqual({
+      holder: BORROWER.fullName,
+    });
+  });
+
+  it('resolves nothing for an account the bank does not know', async () => {
+    await expect(
+      settle(api.resolveAccount(bank.id, UNKNOWN_ACCOUNT), LATENCY.resolveAccount),
+    ).resolves.toBeNull();
+  });
+
+  it('sends a code to the phone on the BVN, masked', async () => {
+    const sent = await settle(api.requestAccountCode(bank.id, number), LATENCY.requestCode);
+    expect(sent).toEqual({ ok: true, maskedPhone: expect.stringMatching(/^0\d{3}•+\d{4}$/), resendIn: 60 });
+  });
+
+  it('sends no code for an account on a different BVN', async () => {
+    await expect(
+      settle(api.requestAccountCode(bank.id, OTHER_BVN_ACCOUNT), LATENCY.requestCode),
+    ).resolves.toEqual({ ok: false, reason: 'different-bvn' });
+  });
+
+  it('sends no code for an account already on file', async () => {
+    // GTBank ••4412 is seeded. Matching on bank and last four is all a masked
+    // number allows.
+    const gtb = BANKS.find((b) => b.name === ACCOUNTS[0].bank)!;
+    await expect(
+      settle(api.requestAccountCode(gtb.id, '0000004412'), LATENCY.requestCode),
+    ).resolves.toEqual({ ok: false, reason: 'already-added' });
+  });
+
+  it('adds the account once the code is confirmed, and lists it after the seeded ones', async () => {
+    const added = await settle(api.confirmAccount(bank.id, number, '123456'), LATENCY.verifyCode);
+
+    expect(added).toEqual({
+      ok: true,
+      account: {
+        id: expect.any(String),
+        bank: 'Access Bank',
+        maskedNumber: '••6789',
+        holder: BORROWER.fullName,
+        type: 'Savings',
+      },
+    });
+
+    const listed = await settle(api.listAccounts(), LATENCY.listAccounts);
+    expect(listed).toEqual([...ACCOUNTS, (added as { account: unknown }).account]);
+
+    // Now on file, so a second attempt is refused before a code goes out.
+    await expect(
+      settle(api.requestAccountCode(bank.id, number), LATENCY.requestCode),
+    ).resolves.toEqual({ ok: false, reason: 'already-added' });
+  });
+
+  it('adds nothing for a wrong code', async () => {
+    await expect(settle(api.confirmAccount(bank.id, number, '123'), LATENCY.verifyCode)).resolves.toEqual({
+      ok: false,
+    });
+    expect(await settle(api.listAccounts(), LATENCY.listAccounts)).toEqual(ACCOUNTS);
+  });
+
+  it('forgets added accounts on reset, as a restart would', async () => {
+    await settle(api.confirmAccount(bank.id, number, '123456'), LATENCY.verifyCode);
+    resetMockApi();
+    expect(await settle(api.listAccounts(), LATENCY.listAccounts)).toEqual(ACCOUNTS);
   });
 });
 
