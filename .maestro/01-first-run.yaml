@@ -52,9 +52,10 @@ appId: com.emekaobah.migo
     visible: 'How long do you need it?'
     timeout: 15000
 
-# Duration first, then amount — the two-stage order is the design, so assert
-# the amounts are genuinely absent until a tenor is chosen.
-- assertNotVisible: 'How much do you need?'
+# Duration first, then amount — the two-stage order is the design, but stage
+# one opens pre-selected on the shortest tenor, so stage two is priced from the
+# start rather than hidden behind a tap. Switching duration re-prices it.
+- assertVisible: 'How much do you need?'
 - tapOn: '30 days'
 - assertVisible: 'How much do you need?'
 - tapOn: '₦49,900'

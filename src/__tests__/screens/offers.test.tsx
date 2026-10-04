@@ -65,20 +65,29 @@ const pickTenor = (getByLabelText: (l: string) => unknown, label: string) =>
   fireEvent.press(getByLabelText(label) as never);
 
 describe('offers', () => {
-  it('asks for duration before it shows any amount', async () => {
+  it('opens on the shortest tenor with stage two already priced against it', async () => {
     const { queryByText, getByLabelText } = await renderScreen();
 
     await waitFor(() => expect(getByLabelText('14 days, 1 payment')).toBeTruthy());
 
-    // Stage two does not exist yet. An amount shown before a tenor is picked
-    // could only quote a range, and the handoff orders these deliberately.
-    expect(queryByText('₦49,900')).toBeNull();
-    expect(queryByText('How much do you need?')).toBeNull();
+    // No tap required. The screen used to render stage one alone, which read as
+    // a blank page until the borrower guessed that a tenor was a button.
+    expect(queryByText('How much do you need?')).not.toBeNull();
 
-    await pickTenor(getByLabelText, '14 days, 1 payment');
+    // Priced against 14 days specifically — 49,900 × 1.10 — so a default that
+    // selected the wrong tenor, or none, would not pass.
+    expect(queryByText('₦54,890')).not.toBeNull();
+  });
 
-    await waitFor(() => expect(queryByText('How much do you need?')).not.toBeNull());
-    expect(queryByText('₦49,900')).not.toBeNull();
+  it('lets the borrower switch away from the default tenor', async () => {
+    const { queryByText, getByLabelText } = await renderScreen();
+
+    await waitFor(() => expect(getByLabelText('14 days, 1 payment')).toBeTruthy());
+    await pickTenor(getByLabelText, '90 days, 3 payments');
+
+    // 49,900 × 1.37. The default is a starting point, not a lock.
+    await waitFor(() => expect(queryByText('₦68,363')).not.toBeNull());
+    expect(queryByText('₦54,890')).toBeNull();
   });
 
   it('recomputes every total when the tenor changes', async () => {
@@ -111,16 +120,18 @@ describe('offers', () => {
     const cta = getByText('Continue');
     await fireEvent.press(cta);
 
-    expect(queryByText('Pick how long you need it.')).not.toBeNull();
-    expect(mockPush).not.toHaveBeenCalled();
-
-    await pickTenor(getByLabelText, '14 days, 1 payment');
-    await fireEvent.press(getByText('Continue'));
-
-    // The error moves on to the next missing thing rather than repeating.
+    // Duration is pre-selected, so amount is the only thing that can be
+    // missing — the CTA still says which, rather than sitting dead.
     expect(queryByText('Pick how much you need.')).not.toBeNull();
     expect(queryByText('Pick how long you need it.')).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
+
+    await fireEvent.press(getByLabelText('₦49,900') as never);
+    await fireEvent.press(getByText('Continue'));
+
+    // The error clears once the gap it named is filled.
+    expect(queryByText('Pick how much you need.')).toBeNull();
+    expect(mockPush).toHaveBeenCalled();
   });
 
   it('sends a first-time borrower to pick a payout account', async () => {

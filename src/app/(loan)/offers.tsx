@@ -21,6 +21,11 @@ import { color, control, space, type } from '@/theme';
  * tenor's multiplier is known. Showing amounts first would mean showing a range
  * and then correcting it, which is how a borrower ends up remembering the wrong
  * number.
+ *
+ * Sequential does not mean empty: the shortest tenor is selected by
+ * `offersLoaded`, so the screen opens with stage two already priced against it
+ * and the borrower switches duration rather than unlocking it. The `!tenor`
+ * guard below survives that — an empty rate table would still leave it null.
  */
 export default function OffersScreen() {
   const router = useRouter();
