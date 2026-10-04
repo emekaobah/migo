@@ -12,6 +12,22 @@ export type PayoutAccount = {
   type: 'Savings' | 'Current';
 };
 
+/** A bank a payout account can be added at. */
+export type Bank = {
+  id: string;
+  name: string;
+};
+
+/**
+ * Why a code was not sent for an account being added. Both are known before
+ * any code goes out, so the borrower is never sent a code that cannot work.
+ */
+export type AccountRefusal = 'already-added' | 'different-bvn';
+
+export type AccountCodeRequest =
+  | { ok: true; maskedPhone: string; resendIn: number }
+  | { ok: false; reason: AccountRefusal };
+
 export type OfferSelection = {
   tenor: Tenor;
   principal: number;
@@ -120,6 +136,23 @@ export interface MigoApi {
   bindDevice(publicKey: string): Promise<{ ok: boolean; name: string }>;
   getOffers(): Promise<Offers>;
   listAccounts(): Promise<PayoutAccount[]>;
+  /**
+   * Adding a payout account, in three steps: look up who holds it, send a code
+   * to the phone registered to that account's BVN, then add it once the code
+   * is confirmed. The first account sets the borrower's BVN; every later one
+   * must share it. Only the BVN is matched — the resolved name is shown so the
+   * borrower can check the number, because bank records format names too
+   * differently to compare.
+   */
+  listBanks(): Promise<Bank[]>;
+  /** Null when the bank has no such account. */
+  resolveAccount(bankId: string, number: string): Promise<{ holder: string } | null>;
+  requestAccountCode(bankId: string, number: string): Promise<AccountCodeRequest>;
+  confirmAccount(
+    bankId: string,
+    number: string,
+    code: string,
+  ): Promise<{ ok: true; account: PayoutAccount } | { ok: false }>;
   acceptLoan(selection: OfferSelection, signature: string): Promise<Loan>;
   getLoan(): Promise<Loan | null>;
   getWallet(bank: WalletBank): Promise<Wallet>;

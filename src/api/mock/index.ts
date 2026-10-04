@@ -7,6 +7,8 @@ import {
 } from '@/lib/loan-math';
 
 import type {
+  AccountCodeRequest,
+  Bank,
   Cancellable,
   ExtensionQuote,
   Loan,
@@ -22,10 +24,15 @@ import { after, delay } from './delay';
 import {
   ACCOUNTS,
   AMOUNTS,
+  BANKS,
   BORROWER,
+  BVN_PHONE,
   EXTENSION,
   LATENCY,
+  OTHER_BVN_ACCOUNT,
+  OTHER_BVN_HOLDER,
   TENORS,
+  UNKNOWN_ACCOUNT,
   USSD,
   WALLETS,
 } from './fixtures';
@@ -43,6 +50,22 @@ import {
 
 /** The single loan this build tracks. Server state stands in for a database. */
 let currentLoan: Loan | null = null;
+
+/** Accounts added this session, after the seeded ones. Lost on restart. */
+let addedAccounts: PayoutAccount[] = [];
+
+const allAccounts = () => [...ACCOUNTS, ...addedAccounts];
+
+const bankName = (bankId: string) => BANKS.find((b) => b.id === bankId)?.name ?? bankId;
+
+/**
+ * Seeded accounts only carry a masked number, so "already on file" can only
+ * mean the same bank and the same last four digits.
+ */
+const onFile = (bankId: string, number: string) =>
+  allAccounts().some((a) => a.bank === bankName(bankId) && a.maskedNumber.endsWith(number.slice(-4)));
+
+const maskPhone = (phone: string) => `${phone.slice(0, 4)}••••${phone.slice(-4)}`;
 
 /**
  * The one place an extension is computed.
@@ -87,11 +110,55 @@ export const mockApi: MigoApi = {
   },
 
   async listAccounts(): Promise<PayoutAccount[]> {
-    return after(LATENCY.listAccounts, ACCOUNTS);
+    return after(LATENCY.listAccounts, allAccounts());
+  },
+
+  async listBanks(): Promise<Bank[]> {
+    return after(LATENCY.listBanks, BANKS);
+  },
+
+  async resolveAccount(_bankId: string, number: string) {
+    if (number === UNKNOWN_ACCOUNT) return after(LATENCY.resolveAccount, null);
+    const holder = number === OTHER_BVN_ACCOUNT ? OTHER_BVN_HOLDER : BORROWER.fullName;
+    return after(LATENCY.resolveAccount, { holder });
+  },
+
+  /**
+   * Refuses before sending anything. A real server would check the BVN the
+   * bank returns against the one on file; here one fixture number stands in
+   * for "someone else's account".
+   */
+  async requestAccountCode(bankId: string, number: string): Promise<AccountCodeRequest> {
+    if (onFile(bankId, number)) {
+      return after(LATENCY.requestCode, { ok: false, reason: 'already-added' });
+    }
+    if (number === OTHER_BVN_ACCOUNT) {
+      return after(LATENCY.requestCode, { ok: false, reason: 'different-bvn' });
+    }
+    return after(LATENCY.requestCode, { ok: true, maskedPhone: maskPhone(BVN_PHONE), resendIn: 60 });
+  },
+
+  /**
+   * Any six digits pass, as with the sign-in code. The refusals are checked
+   * again: a server cannot trust that the code request came first.
+   */
+  async confirmAccount(bankId: string, number: string, code: string) {
+    const refused = code.length !== 6 || onFile(bankId, number) || number === OTHER_BVN_ACCOUNT;
+    if (refused) return after(LATENCY.verifyCode, { ok: false as const });
+
+    const account: PayoutAccount = {
+      id: `${bankId}-${number.slice(-4)}`,
+      bank: bankName(bankId),
+      maskedNumber: `••${number.slice(-4)}`,
+      holder: BORROWER.fullName,
+      type: 'Savings',
+    };
+    addedAccounts = [...addedAccounts, account];
+    return after(LATENCY.verifyCode, { ok: true as const, account });
   },
 
   async acceptLoan(selection: OfferSelection): Promise<Loan> {
-    const account = ACCOUNTS.find((a) => a.id === selection.accountId) ?? ACCOUNTS[0];
+    const account = allAccounts().find((a) => a.id === selection.accountId) ?? ACCOUNTS[0];
     const total = totalRepayable(selection.principal, selection.tenor.multiplier);
 
     const loan: Loan = {
@@ -218,4 +285,5 @@ export const mockApi: MigoApi = {
 /** Test affordance — resets the stand-in server state between cases. */
 export function resetMockApi() {
   currentLoan = null;
+  addedAccounts = [];
 }

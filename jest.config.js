@@ -28,6 +28,14 @@ module.exports = {
 
   testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/?(*.)+(test).ts?(x)'],
 
+  /**
+   * Agent worktrees live under `.claude/worktrees/`, inside the repo. Without
+   * this, a run from the main checkout also collects every worktree's copy of
+   * the suite, resolves its `@/` imports against the main `src/`, and reports
+   * failures that belong to neither.
+   */
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/'],
+
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',

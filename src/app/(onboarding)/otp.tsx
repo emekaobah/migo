@@ -8,6 +8,7 @@ import { CodeBoxes, HeaderRow, InlineError, Keypad, Screen } from '@/components/
 import { OtpStatusStrip } from '@/features/enrolment/otp-status-strip';
 import { UssdHintCard } from '@/features/enrolment/ussd-hint-card';
 import { error as errorHaptic, success, tick } from '@/lib/haptics';
+import { useCountdown } from '@/lib/use-countdown';
 import { useNavOrigin } from '@/state/nav-origin';
 import { duration, space, type } from '@/theme';
 
@@ -25,7 +26,7 @@ export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const [code, setCode] = useState('');
   const [received, setReceived] = useState(false);
-  const [resendIn, setResendIn] = useState(60);
+  const [resendIn] = useCountdown(60);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { openHelpFrom } = useNavOrigin();
@@ -104,12 +105,6 @@ export default function OtpScreen() {
     const timer = setTimeout(() => verifyAutoFilled(autoFilled.current), duration.otpAdvance);
     return () => clearTimeout(timer);
   }, [received]);
-
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [resendIn]);
 
   const append = (digit: string) => {
     if (code.length >= CODE_LENGTH) return;

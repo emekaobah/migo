@@ -1,4 +1,4 @@
-import type { PayoutAccount, Tenor } from '../types';
+import type { Bank, PayoutAccount, Tenor } from '../types';
 
 /**
  * **Illustrative figures.** Amounts, tenors and multipliers come from the
@@ -20,6 +20,34 @@ export const ACCOUNTS: PayoutAccount[] = [
   { id: 'gt-4412', bank: 'GTBank', maskedNumber: '••4412', holder: 'Tunde Adeyemi', type: 'Savings' },
   { id: 'za-8890', bank: 'Zenith Bank', maskedNumber: '••8890', holder: 'Tunde Adeyemi', type: 'Current' },
 ];
+
+/** Banks a payout account can be added at. Illustrative, not a partner list. */
+export const BANKS: Bank[] = [
+  { id: 'access', name: 'Access Bank' },
+  { id: 'fcmb', name: 'FCMB' },
+  { id: 'fidelity', name: 'Fidelity Bank' },
+  { id: 'firstbank', name: 'First Bank' },
+  { id: 'gtbank', name: 'GTBank' },
+  { id: 'stanbic', name: 'Stanbic IBTC' },
+  { id: 'sterling', name: 'Sterling Bank' },
+  { id: 'uba', name: 'UBA' },
+  { id: 'union', name: 'Union Bank' },
+  { id: 'wema', name: 'Wema Bank' },
+  { id: 'zenith', name: 'Zenith Bank' },
+];
+
+/** An account number no bank recognises, at any bank. */
+export const UNKNOWN_ACCOUNT = '0000000000';
+
+/** An account held under someone else's BVN, so it cannot be added. */
+export const OTHER_BVN_ACCOUNT = '2222222222';
+export const OTHER_BVN_HOLDER = 'Bola Okafor';
+
+/**
+ * The phone registered to the borrower's BVN — deliberately not the enrolled
+ * number, which is the case the code screen has to explain.
+ */
+export const BVN_PHONE = '08027654123';
 
 /**
  * Extension terms. **30% / 30 days, client-confirmed 2026-08-02**
@@ -65,6 +93,8 @@ export const LATENCY = {
   bindDevice: 600,
   getOffers: 1800,
   listAccounts: 300,
+  listBanks: 300,
+  resolveAccount: 900,
   acceptLoan: 900,
   getLoan: 0,
   getWallet: 700,

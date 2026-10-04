@@ -1,10 +1,10 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
 import type { PayoutAccount } from '@/api/types';
-import { Button, HeaderRow, InlineError, RadioRow, Screen, Spinner } from '@/components/ui';
+import { Button, HeaderRow, InlineError, RadioRow, Row, Screen, Spinner } from '@/components/ui';
 import { useLoan } from '@/state/loan-context';
 import { space, type } from '@/theme';
 
@@ -16,36 +16,51 @@ import { space, type } from '@/theme';
  * That routing is driven by `accountChosen` in loan state rather than by
  * checking whether `accountId` happens to be set, because "never picked one"
  * and "picked one and it is the first in the list" are different facts.
+ *
+ * "Add an account" opens `add-account`, which returns here with `added` set to
+ * the new account's id. The list is fetched on focus rather than on mount, so
+ * the account is there when the borrower comes back, and it arrives selected.
  */
 export default function BanksScreen() {
   const router = useRouter();
   const { accountId, chooseAccount } = useLoan();
+  const { added } = useLocalSearchParams<{ added?: string }>();
 
   const [accounts, setAccounts] = useState<PayoutAccount[] | null>(null);
-  const [selected, setSelected] = useState<string | null>(accountId);
+  const [selected, setSelected] = useState<string | null>(added ?? accountId);
+  // `added` stays in the route params after it has done its job. Applying it on
+  // every focus would undo a different account the borrower picked since.
+  const appliedAdded = useRef(added);
   const [error, setError] = useState<string | null>(null);
   // A failed fetch is not an empty list. Collapsing the two renders an empty
   // radio group with no explanation, and the only CTA then asks the borrower to
   // pick from nothing — a dead end with no way back out.
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    if (failed) return;
-    let active = true;
+  useFocusEffect(
+    useCallback(() => {
+      if (failed) return;
+      let active = true;
 
-    api
-      .listAccounts()
-      .then((list) => {
-        if (active) setAccounts(list);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
+      api
+        .listAccounts()
+        .then((list) => {
+          if (!active) return;
+          setAccounts(list);
+          if (added && appliedAdded.current !== added) {
+            appliedAdded.current = added;
+            setSelected(added);
+          }
+        })
+        .catch(() => {
+          if (active) setFailed(true);
+        });
 
-    return () => {
-      active = false;
-    };
-  }, [failed]);
+      return () => {
+        active = false;
+      };
+    }, [failed, added]),
+  );
 
   function onUse() {
     if (!selected) {
@@ -91,6 +106,19 @@ export default function BanksScreen() {
             ))}
           </View>
 
+          {accounts.length === 0 ? (
+            <Text style={styles.empty}>
+              You have no payout account yet. Add one to receive your loan.
+            </Text>
+          ) : null}
+
+          <Row
+            label="Add an account"
+            chevron
+            onPress={() => router.push('/(loan)/add-account')}
+            style={styles.add}
+          />
+
           <Text style={styles.footnote}>
             Only an account in your own name can receive a Migo loan.
           </Text>
@@ -100,9 +128,10 @@ export default function BanksScreen() {
       {/*
         No CTA while the list is missing. "Use this account" over a failed fetch
         can only ever answer "pick one" — which is not something the borrower
-        can do, and not what went wrong.
+        can do, and not what went wrong. The same holds for an empty list: the
+        only way forward there is to add one.
       */}
-      {failed ? null : (
+      {failed || accounts?.length === 0 ? null : (
         <View style={styles.footer}>
           {error ? <InlineError message={error} /> : null}
           <Button label="Use this account" onPress={onUse} />
@@ -116,6 +145,8 @@ const styles = StyleSheet.create({
   h1: { ...type.h1, marginTop: space.sm, marginBottom: space.xl },
   pending: { paddingVertical: space.xxl, alignItems: 'center' },
   list: { gap: space.sm },
+  empty: { ...type.body, marginBottom: space.md },
+  add: { marginTop: space.md },
   footnote: { ...type.caption, marginTop: space.lg },
   footer: { marginTop: 'auto', paddingTop: space.xl, gap: space.md },
 });
