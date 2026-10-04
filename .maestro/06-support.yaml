@@ -36,8 +36,7 @@ appId: com.emekaobah.migo
 - tapOn: 'Loan Repayment'
 - assertVisible: 'How do I extend my loan?'
 - tapOn: 'How do I extend my loan?'
-# Verbatim client copy — and the answer that says 30%, which the extend screen
-# follows. The Loan Offers section says 20%; see OPEN-QUESTIONS #7.
+# The answer states the same percentage the extend screen quotes.
 - assertVisible: '.*30%.*'
 - back
 
