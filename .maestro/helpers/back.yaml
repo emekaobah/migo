@@ -1,0 +1,19 @@
+# Goes back one screen on either platform.
+#
+# The platforms disagree on what "back" is. iOS has no system back, so the
+# in-screen `Back` control is the only route, and Maestro's `back` does nothing
+# there. Android omits that in-screen control on purpose (`HeaderRow`: the
+# system gesture is the back affordance), so `tapOn: 'Back'` finds nothing and
+# the system back is the only route.
+appId: com.emekaobah.migo
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: 'Back'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back

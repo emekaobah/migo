@@ -41,9 +41,9 @@ appId: com.emekaobah.migo
 - tapOn: 'How do I extend my loan?'
 # The answer states the same percentage the extend screen quotes.
 - assertVisible: '.*30%.*'
-# The in-app back control, not Maestro's `back`: that is Android's system back
-# and does nothing on iOS.
-- tapOn: 'Back'
+# Back differs by platform (in-screen control on iOS, system back on Android),
+# so it goes through a helper.
+- runFlow: helpers/back.yaml
 
 # ── chat ───────────────────────────────────────────────────────────────────
 - tapOn: 'Chat with support.*'
@@ -53,9 +53,9 @@ appId: com.emekaobah.migo
 - extendedWaitUntil:
     visible: '.*30%.*'
     timeout: 10000
-- tapOn: 'Back'
+- runFlow: helpers/back.yaml
 
 # ── back to where Help was opened from ─────────────────────────────────────
 - assertVisible: 'Help'
-- tapOn: 'Back'
+- runFlow: helpers/back.yaml
 - assertVisible: 'Your loan'
