@@ -10,6 +10,7 @@
     "backgroundColor": "#010065",
     "ios": {
       "bundleIdentifier": "com.emekaobah.migo",
+      "appleTeamId": "HP5MVM38V6",
       "supportsTablet": false
     },
     "android": {

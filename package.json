@@ -45,6 +45,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "ios:release": "expo run:ios --device --configuration Release",
+    "android:release": "expo run:android --device --variant release",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "prepare": "husky || true",
