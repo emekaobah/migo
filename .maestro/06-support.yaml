@@ -15,7 +15,7 @@ appId: com.emekaobah.migo
 # ── help ───────────────────────────────────────────────────────────────────
 - assertVisible: 'Help'
 # Chat sits above search: someone opening Help is often stuck, not browsing.
-- assertVisible: 'Chat with support'
+- assertVisible: 'Chat with support.*'
 - assertVisible: 'About Migo'
 
 # ── search ─────────────────────────────────────────────────────────────────
@@ -31,6 +31,9 @@ appId: com.emekaobah.migo
     visible: 'Nothing matches that. Try another word, or start a chat above.'
     timeout: 5000
 - eraseText
+# Dismiss the keyboard by submitting: on iOS it covers the section list, and
+# `hideKeyboard` taps the screen, which opens whichever row is under it.
+- pressKey: Enter
 
 # ── a FAQ section ──────────────────────────────────────────────────────────
 - tapOn: 'Loan Repayment'
@@ -38,19 +41,21 @@ appId: com.emekaobah.migo
 - tapOn: 'How do I extend my loan?'
 # The answer states the same percentage the extend screen quotes.
 - assertVisible: '.*30%.*'
-- back
+# The in-app back control, not Maestro's `back`: that is Android's system back
+# and does nothing on iOS.
+- tapOn: 'Back'
 
 # ── chat ───────────────────────────────────────────────────────────────────
-- tapOn: 'Chat with support'
+- tapOn: 'Chat with support.*'
 - assertVisible: 'Migo support'
 - assertVisible: '.*Typing is disabled.*'
 - tapOn: 'Extend my loan'
 - extendedWaitUntil:
     visible: '.*30%.*'
     timeout: 10000
-- back
+- tapOn: 'Back'
 
 # ── back to where Help was opened from ─────────────────────────────────────
 - assertVisible: 'Help'
-- back
+- tapOn: 'Back'
 - assertVisible: 'Your loan'

@@ -30,29 +30,106 @@ not met.
 | Pressed states on every tappable surface | ✅ one gap found and fixed (§6) |
 | Haptics on keypad, hold-complete, error | ✅ verified (§7) |
 | `pnpm test` passes | ✅ 277 across 20 suites |
-| **Seven Maestro flows written *and green*** | ⚠️ **written, never run** |
+| **Seven Maestro flows written *and green*** | ⚠️ **run, not green** — see [E2E results](#e2e-results-close-out) |
 | **TalkBack walkthrough of all four journeys** | ❌ **not done** |
 | **VoiceOver walkthrough of all four journeys** | ❌ **not done** |
 | **Low-end Android device pass** | ❌ **not done** |
-| **Biometric sign-in verified by hand** | ❌ **not done** |
+| **Biometric sign-in verified by hand** | ⚠️ **iOS simulator Face ID only** — see [Manual checks](#manual-checks) |
 
 ### Why the second half is outstanding
 
-Every remaining item needs hardware and a real build. The flows target an
-installed app from an EAS profile, and Maestro is not installed in the
-environment they were authored in — so they have been written and reviewed but
-have **never executed once**. Treat them as unverified until they have.
+Most remaining items need hardware. The Maestro flows have now been run against
+installed builds (results below). Most of them fail, and the main reason is a
+mismatch between the flows and the mock rather than broken journeys: the mock
+API holds the loan in memory, so it is gone after the cold start each flow's
+`launchApp` performs, and every flow after `01` expects to land on an active
+loan.
 
-`.maestro/02-returning.yaml` additionally cannot run unattended on either
-platform, which is a property of the tooling rather than of the flow: Maestro's
-`runScript` has no shell access so it cannot call `adb emu finger touch 1`, and
-the iOS simulator's Features → Face ID → Matching Face is a menu action with no
-scriptable equivalent. It is excluded from the ordered suite in `config.yaml`
-for that reason, and `03-pin-fallback.yaml` covers the same journey unattended.
+`.maestro/02-returning.yaml` still cannot run unattended under Maestro alone:
+`runScript` has no shell access, so the biometric match has to come from
+another shell. On Android that is `adb emu finger touch 1`. On the iOS
+simulator it *is* scriptable, contrary to what the flow's header says:
+`xcrun simctl spawn <udid> notifyutil -p com.apple.BiometricKit_Sim.pearl.match`
+(see Manual checks). The flow is meant to stay out of the ordered suite in
+`config.yaml` for that reason. `03-pin-fallback.yaml` covers the same journey
+by PIN.
 
-**These carry into Phase 9**, whose first task is the EAS `preview` build that
-makes all of them possible. Nothing here blocks that build; the risk is only
-that an untested flow is mistaken for a passing one.
+## E2E results (close-out)
+
+| Flow | Android | iOS |
+|---|---|---|
+| `01-first-run` | — | ✅ pass |
+| `02-returning` | — | ❌ fail — run on its own with Face ID enrolled and the match sent from a shell: sign-in completes, but the app lands on offers, not `Your loan`, because the mock's loan does not survive the cold start |
+| `03-pin-fallback` | — | ❌ fail — PIN sign-in completes, then lands on offers, not `Your loan` (same cause) |
+| `04-repayment` | — | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
+| `05-extension` | — | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
+| `06-support` | — | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
+| `07-new-device` | — | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
+
+iOS build: EAS profile `preview-simulator` (Release, not a dev client), EAS
+build `4edafb2b-dc3d-4848-b25b-10e0175dd811`, built remotely on 2026-10-04 from
+commit `c5a1b53` (`main` at `a5e921e` plus the new profile). Installed with
+`xcrun simctl install` on an iPhone 16 simulator running iOS 18.3, and run with
+Maestro 2.10.0. A fresh install opens on enrolment. A deep link to the dev-only
+`kitchen-sink` route redirects back to it, so no developer screen is reachable.
+
+**Same cause** means the mock API keeps the loan in memory
+(`src/api/mock/index.ts`). It is designed to be server-held, and
+`persistence.ts` deliberately leaves it out, so a cold start has no loan.
+Fixing that means changing the app or restructuring the flows, so it is
+recorded here rather than fixed. To check the journeys themselves, `04`–`07`
+were each run once more with their `launchApp` + `sign-in` steps replaced by
+`runFlow: 01-first-run.yaml`, which keeps the loan in the same app session.
+With the fixes below, all four passed that way. Those were diagnostic runs, not
+the committed flows.
+
+Two other things showed up while running the suite:
+
+- Running `maestro test .maestro` with Maestro 2.10 ran all seven flows,
+  including `02-returning`. It did not apply the `config.yaml` list.
+- `01-first-run` only passes while no Face ID is enrolled on the simulator,
+  which is the default. With Face ID enrolled, hold-to-accept also asks for
+  Face ID, and the flow stalls at that prompt.
+
+Flow fixes made during the run. They change selectors and steps only, not app
+code:
+
+- `01`: removed `duration: 1500` from `longPressOn`, because Maestro 2.10
+  rejects it as an unknown property and the flow would not parse. The built-in
+  long press is long enough for the hold.
+- `01`: updated stale copy. `Sign in to Migo` became
+  `Sign in or create your Migo account`, and `.*[Ee]nrolment code.*` became
+  `Enter the code we sent you`.
+- `01`: `30 days` became `30 days.*` and `Paid into` became `Paid into.*`,
+  because on iOS the accessible label also includes the payment count and the
+  account.
+- `01`: added `waitForAnimationToEnd` before the PIN taps. Without it, one of
+  the six taps was lost on iOS.
+- `06`: `Chat with support` became `Chat with support.*`, because the card's
+  label carries the reply time.
+- `06`: added `pressKey: Enter` after clearing the search. Otherwise the iOS
+  keyboard covers the section list, and the next tap lands on a key.
+- `06`: replaced `back` with `tapOn: 'Back'`. Maestro's `back` does nothing on
+  iOS.
+- `07`: the avatar is now tapped by its label (`Account, .*`) instead of
+  `point: '90%,8%'`, which missed it on iPhone 16.
+- `07`: the `We don't recognise this phone.` heading has no trailing full
+  stop, so the selector no longer has one.
+
+### Manual checks
+
+- **Face ID returning sign-in (iOS simulator): ✅ pass.** Face ID was enrolled
+  with `notifyutil -s com.apple.BiometricKit.enrollmentChanged 1` (then `-p`).
+  After enrolling in the app, a cold start showed the lock screen. Tapping the
+  biometric target raised the system Face ID sheet.
+  `com.apple.BiometricKit_Sim.pearl.match` signed in and went on to the
+  post-sign-in screen (offers, for the reason above).
+  `com.apple.BiometricKit_Sim.pearl.nomatch` showed iOS's "Face Not
+  Recognized" alert, with "Use PIN instead" as the fallback. Face ID signing on
+  hold-to-accept also completed on a match. This was a simulator, not a
+  physical device.
+- **Fresh install opens on enrolment, no dev screens: ✅ pass** (see the build
+  note above).
 
 ---
 
@@ -231,9 +308,9 @@ per PLAN §6b — and worth being specific about *what each one would catch*, si
 | **TalkBack** (Android) | Whether the composed row labels in §3 are announced as one sentence or read past. The automated test asserts the `accessible` prop is set; only a screen reader proves the effect |
 | **VoiceOver** (iOS) | Same, and the one most worth doing — the composed-label defect this fixed was found in review, not by a test |
 | **Low-end Android** | Finding B. A 1.09 pressed state is a number on a page until someone tries to see it on a cheap panel in daylight. PLAN §8 calls this the actual market |
-| **Biometric prompts** | That `lock` → `active` completes at all on real hardware. Neither Maestro nor the unit tests exercise a real prompt |
+| **Biometric prompts** | That `lock` → `active` completes at all on real hardware. Checked by hand on the iOS simulator only (see Manual checks), not on a physical device |
 | **Content sizing** | Large-text and display-scaling behaviour, which nothing in this repo tests. A 48px target at 200% text is not still 48px of usable space |
-| **The seven Maestro flows** | Whether the journeys hold end to end against an installed build. They have never been run — see above |
+| **The seven Maestro flows** | Whether the journeys hold end to end against an installed build. Run on the iOS simulator at close-out, with only `01` green — see [E2E results](#e2e-results-close-out) |
 
 ### One thing the automated suite structurally cannot cover
 

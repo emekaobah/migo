@@ -10,8 +10,7 @@ appId: com.emekaobah.migo
 - runFlow: helpers/sign-in.yaml
 
 - assertVisible: 'Your loan'
-- tapOn:
-    point: '90%,8%'   # the account avatar in the header
+- tapOn: 'Account, .*'   # the account avatar in the header
 
 - assertVisible: '.*account.*'
 # Locking and signing out are deliberately separated — both must be present and
@@ -25,7 +24,7 @@ appId: com.emekaobah.migo
     id: 'sign-out'
 
 - extendedWaitUntil:
-    visible: "We don't recognise this phone."
+    visible: "We don't recognise this phone"
     timeout: 10000
 - assertVisible: '*561*9#'
 - tapOn:
