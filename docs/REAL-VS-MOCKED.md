@@ -35,7 +35,7 @@ shipped code path. (The Jest suite mocks the native modules in
 | PIN | `src/lib/secure-pin.ts` | The six-digit PIN is never stored. A random 16-byte salt and `SHA-256(salt:pin)` go into SecureStore. The PIN and hash are never held in React state. The failed-attempt counter is also in SecureStore, so force-quitting does not reset it. Verification is serialised so concurrent attempts cannot under-count |
 | Lockout | `src/lib/secure-pin.ts`, `src/app/(session)/pinlock.tsx` | Five wrong PINs locks the PIN path and routes to the new-device screen |
 | Biometric re-check on accept | `src/app/(loan)/confirm.tsx` | Hold-to-accept prompts for biometrics again before the loan is submitted, when the handset has a usable sensor |
-| Session handling | `src/state/auth-context.tsx` | `authed` is never persisted, so a cold start always lands on the lock screen. Sign-out clears the durable slice and the PIN material |
+| Session handling | `src/state/auth-context.tsx`, `src/app/(account)/signout.tsx` | `authed` is never persisted, so a cold start always lands on the lock screen. Sign-out clears the durable slice and the PIN material |
 | USSD hand-off | `src/lib/ussd.ts` | Opens the dialler with the code filled in via `tel:`. It never dials on the borrower's behalf |
 | Loan arithmetic | `src/lib/loan-math.ts` | Pure, unit-tested. Whole naira throughout, instalments always sum to the total, remainder on the last payment, extension dated from the instalment being extended past. The maths is real; the inputs it runs on are illustrative |
 | Interaction design | `src/app/`, `src/components/ui/`, `src/theme/` | 21 screens built natively for both platforms from one codebase, with platform-correct buttons, back behaviour and biometric copy. Accessibility status is in [`ACCESSIBILITY.md`](ACCESSIBILITY.md) |
@@ -73,7 +73,7 @@ left mid-wait without stray state updates.
 - `requestCode` sends nothing and returns a 60-second resend timer.
 - `verifyCode` accepts any six-character code.
 - `ussdCode` returns a fixed code.
-- `getOffers` returns the fixture tenors and amounts after 1.8s. No credit
+- `getOffers` returns the fixture tenors and amounts after 1.8 seconds. No credit
   decision is made.
 - `listAccounts` returns two fictional payout accounts.
 - `acceptLoan` builds a loan locally with `loan-math` and keeps it in a module
@@ -134,7 +134,7 @@ entry does not use) or would simply ask the borrower to type the code.
 `createChatTransport(getFacts)`.
 
 **What the mock does.** A scripted agent (`src/data/chat-scripts.ts`) replies
-after a 1.6s typing indicator. Signed in, it quotes the borrower's loan and
+after a 1.6-second typing indicator. Signed in, it quotes the borrower's loan and
 extension figures from app state; signed out, it asks for the phone number.
 Quick-reply chips drive it; the free-text composer is inert. The conversation
 lives in memory for the session. No person is on the other end.
@@ -217,9 +217,11 @@ screens only through `MigoApi`, so no screen hard-codes a rate.
 | Extension: rate on the carried amount | ×1.16 | `EXTENSION.rate` |
 | Borrower, payout accounts, wallet account numbers | Fictional | `BORROWER`, `ACCOUNTS`, `WALLETS` |
 | Wallet banks | Sterling Bank, Fidelity Bank | `src/features/repayment/banks.ts` |
-| Enrolment and new-device codes | `419 736`; new-device shortcode `*561*9#` | `USSD`; `src/lib/ussd.ts` |
+| SMS code | `419736` | `createMockSmsRetriever` in `src/api/mock/sms-retriever.ts` |
+| USSD fallback code | `419 736` at enrolment; its first four digits on the new-device screen | `USSD` |
+| New-device shortcode | `*561*9#` | `NEW_DEVICE_CODE` in `src/lib/ussd.ts` |
 | PIN lockout | 5 attempts | `MAX_ATTEMPTS` in `src/lib/secure-pin.ts` |
-| Latencies | 0 to 6,000 ms per call | `LATENCY` |
+| Latencies | 0 to 6 seconds per call | `LATENCY` |
 
 **The extension terms are an assumption.** "Pay 30% of the outstanding now, and
 the remainder is carried for 30 days" is taken from Migo's published FAQ, not
@@ -228,5 +230,7 @@ published there; ×1.16 is the build's own 30-day multiplier, chosen so that a
 30-day carry costs what a 30-day loan costs. All three values are parameters, so
 real terms are a change to `EXTENSION` or to the API that replaces it.
 
-The enrolment shortcode `*561#` is the one Migo publishes. Everything else in
-the table above is invented for the demo.
+The one real identifier is the enrolment shortcode `*561#` (`ENROL_CODE` in
+`src/lib/ussd.ts`), which Migo publishes. The new-device shortcode extends it
+with an invented suffix; everything in the table above is invented for the
+demo.
