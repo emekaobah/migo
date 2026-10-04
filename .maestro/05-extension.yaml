@@ -24,3 +24,7 @@ appId: com.emekaobah.migo
     visible: 'This loan has been extended'
     timeout: 10000
 - assertVisible: 'Outstanding'
+# The extension must have been applied: the balance carries to a new date and
+# is a single carried payment, which is the next one due rather than paid.
+- assertVisible: '.*carries to.*'
+- assertVisible: 'Payment 1, .*, Next'

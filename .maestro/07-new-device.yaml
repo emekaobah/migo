@@ -30,3 +30,8 @@ appId: com.emekaobah.migo
 - assertVisible: '*561*9#'
 - tapOn:
     id: 'authorised'
+
+# Authorisation binds the device and returns to the returning sign-in screen.
+- extendedWaitUntil:
+    visible: 'Welcome back'
+    timeout: 10000

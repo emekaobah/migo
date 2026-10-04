@@ -33,3 +33,6 @@ appId: com.emekaobah.migo
 - extendedWaitUntil:
     visible: 'Your loan'
     timeout: 10000
+# The payment must have been applied, not just navigated past: the instalment
+# that was Next is now labelled Paid (the schedule row's accessible label).
+- assertVisible: 'Payment 1, .*, Paid'
