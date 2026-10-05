@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/client';
 import { BrandMark, Screen, Spinner } from '@/components/ui';
+import { useEntryTransition } from '@/lib/use-entry-transition';
 import { useLoan } from '@/state/loan-context';
 import { color, onNavy, space, type } from '@/theme';
 
@@ -18,6 +19,7 @@ import { color, onNavy, space, type } from '@/theme';
 export default function LoadingScreen() {
   const router = useRouter();
   const { loanLoaded, loanTaken, offersLoaded } = useLoan();
+  const entered = useEntryTransition();
 
   useEffect(() => {
     let active = true;
@@ -28,6 +30,10 @@ export default function LoadingScreen() {
       loanLoaded(loan);
 
       if (loan) {
+        // `getLoan` can answer before this screen has finished animating in,
+        // and replacing it mid-transition can blank the window on iOS.
+        await entered();
+        if (!active) return;
         router.replace('/(loan)/active');
         return;
       }
