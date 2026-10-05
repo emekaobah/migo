@@ -75,16 +75,6 @@ export default function ActiveScreen() {
           <Row label="Help & FAQs" onPress={onHelp} chevron />
         </Card>
       </View>
-
-      <View style={styles.block}>
-        <Card tone="tonal">
-          <Text style={styles.remindersTitle}>Reminders</Text>
-          <Text style={styles.remindersBody}>
-            We text you three days before each payment is due, and again on the day. Repaying on
-            time is what raises your limit.
-          </Text>
-        </Card>
-      </View>
     </Screen>
   );
 }
@@ -106,6 +96,4 @@ const styles = StyleSheet.create({
   block: { marginTop: space.lg },
   extendedTitle: { ...type.bodyLarge, color: color.successText },
   extendedBody: { ...type.body, color: color.successTextAlt, marginTop: space.xs },
-  remindersTitle: { ...type.bodyLarge },
-  remindersBody: { ...type.body, color: color.textSecondary, marginTop: space.xs },
 });

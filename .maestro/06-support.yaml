@@ -48,7 +48,7 @@ appId: com.emekaobah.migo
 # ── chat ───────────────────────────────────────────────────────────────────
 - tapOn: 'Chat with support.*'
 - assertVisible: 'Migo support'
-- assertVisible: '.*Typing is disabled.*'
+- assertVisible: 'Choose a reply above'
 - tapOn: 'Extend my loan'
 - extendedWaitUntil:
     visible: '.*30%.*'

@@ -152,7 +152,7 @@ export default function ChatScreen() {
 
         <View>
           <Text style={styles.agentName}>{AGENT_NAME}</Text>
-          <Text style={styles.agentMeta}>Scripted preview</Text>
+          <Text style={styles.agentMeta}>Every day, 8am – 8pm</Text>
         </View>
       </View>
 

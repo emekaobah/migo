@@ -13,9 +13,7 @@ type Props = Readonly<{
  * Biometric enrolment on `bind`.
  *
  * Two states, per the handoff: untapped (tonal, ring outline) and enrolled
- * (success tint, green check). The enrolled sub-line states plainly that the
- * biometric never leaves the phone, because that is the claim the borrower is
- * being asked to trust.
+ * (success tint, green check).
  */
 export function BiometricCard({ enrolled, onPress, unavailableReason }: Props) {
   if (unavailableReason) {
@@ -54,9 +52,7 @@ export function BiometricCard({ enrolled, onPress, unavailableReason }: Props) {
         <Text style={[styles.title, enrolled && styles.enrolledTitle]}>
           {enrolled ? biometric.enrolledTitle : biometric.enrolTitle}
         </Text>
-        <Text style={[styles.sub, enrolled && styles.enrolledSub]}>
-          {enrolled ? 'Kept on this phone only. Never sent to Migo.' : 'Tap to add it. One touch to sign in.'}
-        </Text>
+        {enrolled ? null : <Text style={styles.sub}>Tap to turn it on.</Text>}
       </View>
     </Pressable>
   );
@@ -94,5 +90,4 @@ const styles = StyleSheet.create({
   title: { ...type.bodyLarge, fontWeight: '600' },
   enrolledTitle: { color: color.successText },
   sub: { ...type.caption },
-  enrolledSub: { color: color.successTextAlt },
 });

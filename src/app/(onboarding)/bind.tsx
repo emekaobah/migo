@@ -145,7 +145,6 @@ export default function BindScreen() {
 
         <View style={styles.pinBlock}>
           <Text style={type.bodyLarge}>Set a 6-digit backup PIN</Text>
-          <Text style={styles.hint}>Kept on this phone only. Never sent to Migo.</Text>
           <PinDots filled={pinDigits.length} />
         </View>
 
@@ -175,5 +174,4 @@ export default function BindScreen() {
 const styles = StyleSheet.create({
   body: { gap: space.lg, paddingTop: space.lg, paddingBottom: space.xl },
   pinBlock: { gap: space.md, alignItems: 'center' },
-  hint: { ...type.caption, textAlign: 'center' },
 });
