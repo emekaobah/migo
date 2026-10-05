@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 
-import { clear, EMPTY, load, save, type DurableState } from './persistence';
+import {
+  EMPTY,
+  load,
+  save,
+  signOut as persistSignOut,
+  SIGNED_OUT,
+  type DurableState,
+} from './persistence';
 
 /**
  * Enrolment and session state.
@@ -43,10 +50,10 @@ function reducer(state: AuthState, action: Action): AuthState {
     case 'authed':
       return { ...state, authed: action.value };
     case 'signedOut':
-      // Sign-out unbinds the device but keeps nothing else — the confirmation
-      // screen promises the loan, limit and dates are untouched, and those live
-      // server-side rather than here.
-      return { ...INITIAL, hydrated: true };
+      // Sign-out unbinds the device and keeps only `enrolled` (see
+      // `SIGNED_OUT`). The loan, limit and dates are untouched because they
+      // live server-side rather than here.
+      return { ...INITIAL, ...SIGNED_OUT, hydrated: true };
   }
 }
 
@@ -91,7 +98,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       markPinSet: () => dispatch({ type: 'pinSet' }),
       setAuthed: (v) => dispatch({ type: 'authed', value: v }),
       signOut: async () => {
-        await clear();
+        await persistSignOut();
         dispatch({ type: 'signedOut' });
       },
     }),

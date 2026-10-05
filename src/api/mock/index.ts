@@ -121,7 +121,7 @@ export const mockApi: MigoApi = {
   },
 
   async bindDevice() {
-    return after(LATENCY.bindDevice, { ok: true, name: BORROWER.name });
+    return after(LATENCY.bindDevice, { ok: true, name: BORROWER.name, phone: BORROWER.phone });
   },
 
   async getOffers(): Promise<Offers> {

@@ -20,6 +20,10 @@ const UNAVAILABLE: Record<'no-hardware' | 'not-enrolled', string> = {
 /**
  * Screen 4 — device binding. Step 2 of 2.
  *
+ * Also step 2 of re-authorising, after `newdevice` (step 1): a sign-out or a
+ * PIN lockout leaves no PIN that can be used, so the borrower sets a new one
+ * here. That path has no `phone` param — the server returns it.
+ *
  * Both halves are **real**: `authenticate` runs the platform prompt, and the
  * PIN is stored as a salted hash in SecureStore, never in React state and
  * never transmitted. Those are the parts of this proposal worth proving on
@@ -94,9 +98,9 @@ export default function BindScreen() {
     setBusy(true);
     try {
       await setPin(pinDigits);
-      const { name } = await api.bindDevice('device-public-key');
+      const bound = await api.bindDevice('device-public-key');
 
-      auth.markEnrolled(phone ?? '', name);
+      auth.markEnrolled(phone ?? bound.phone, bound.name);
       auth.markDeviceBound();
       auth.markPinSet();
       if (bioEnrolled) auth.markBioEnrolled();

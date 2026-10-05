@@ -5,7 +5,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/api/client';
 import { Button, Card, HeaderRow, Screen } from '@/components/ui';
 import { NEW_DEVICE_CODE, openDialer } from '@/lib/ussd';
-import { useAuth } from '@/state/auth-context';
 import { useNavOrigin } from '@/state/nav-origin';
 import { color, space, type } from '@/theme';
 
@@ -15,13 +14,15 @@ import { color, space, type } from '@/theme';
  * Reached after a sign-out, a PIN lockout, or enrolling on a new phone. USSD is
  * the only route back, which is the point: it proves possession of the SIM
  * rather than of a code someone could read out.
+ *
+ * Authorising leads to `bind` for a new PIN, never straight to `lock`: neither
+ * a sign-out nor a lockout leaves a PIN that can be used.
  */
 export default function NewDeviceScreen() {
   const [code, setCode] = useState('— — — —');
   const [dialerUnavailable, setDialerUnavailable] = useState(false);
   const [codeError, setCodeError] = useState(false);
   const router = useRouter();
-  const auth = useAuth();
   const { openHelpFrom } = useNavOrigin();
 
   useEffect(() => {
@@ -88,10 +89,10 @@ export default function NewDeviceScreen() {
         <Button label={`Open the dialler with ${NEW_DEVICE_CODE}`} variant="tonal" onPress={() => void dial()} />
         <Button
           label="I've authorised it"
-          onPress={() => {
-            auth.markDeviceBound();
-            router.replace('/(session)/lock');
-          }}
+          // Not bound yet: `bind` marks it once a new PIN is set. Marking it here
+          // sent the borrower to a lock screen with no name and no PIN behind
+          // "Use PIN instead", and a cold start in between to enrolment.
+          onPress={() => router.push('/(onboarding)/bind')}
           testID="authorised"
         />
       </View>

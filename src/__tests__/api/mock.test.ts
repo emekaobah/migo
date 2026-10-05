@@ -13,7 +13,7 @@ import {
   UNKNOWN_ACCOUNT,
 } from '@/api/mock/fixtures';
 import { addDays, outstandingAfter } from '@/lib/loan-math';
-import { clear as signOutStorage } from '@/state/persistence';
+import { signOut as signOutStorage } from '@/state/persistence';
 
 import { secureStoreMock } from '../setup';
 
