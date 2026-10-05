@@ -32,7 +32,7 @@ jobs:
             ci
             chore
             revert
-          # Keep in sync with commitlint.config.mjs — scopes follow design/PLAN.md §2.
+          # Keep in sync with commitlint.config.mjs.
           scopes: |
             theme
             ui

@@ -1,49 +1,43 @@
 # Accessibility report
 
-Against HANDOFF §"Accessibility", item by item. This is the Phase 8 exit
-deliverable (PLAN §8).
+The design handoff's accessibility checklist, checked item by item.
 
-Three columns matter throughout: what a machine verifies on every commit, what
-still needs a device, and what is a genuine open finding. The third column is
-the one usually left out.
+Three things matter throughout: what a machine verifies on every commit, what
+still needs a device, and what is a genuine open finding. The third is the one
+usually left out.
 
 | | |
 |---|---|
-| **Automated** | 277 tests, 20 suites. `theme/contrast.test.ts` (35) and `screens/a11y.test.tsx` (32) cover this list |
-| **Still needs a device** | TalkBack, VoiceOver, low-end Android, biometric prompts |
-| **Open findings** | 3, listed at the end. None block the build |
+| **Automated** | 320 tests, 23 suites. `theme/contrast.test.ts` (35) and `screens/a11y.test.tsx` (32) cover this list |
+| **Still needs a device** | TalkBack, VoiceOver, low-end Android, biometric prompts on physical hardware |
+| **Open findings** | 2, listed at the end. Neither blocks the build |
 
 ---
 
-## ⚠ Phase 8 is not complete
+## Status
 
-Stated up front so a green CI badge does not read as a finished phase. PLAN §8's
-exit is: *"an accessibility report against the handoff's list, item by item;
-`pnpm test` and all Maestro flows pass on both platforms."* The second half is
-not met.
+Stated up front so a green CI badge does not read as finished work.
 
-| exit criterion | status |
+| check | status |
 |---|---|
-| Accessibility report, item by item | ✅ this document |
-| The handoff's audit list re-verified | ✅ automated, §§1–5 below |
-| `a11y.test.tsx` completed against the list | ✅ 32 assertions |
+| The handoff's checklist, item by item | ✅ this document |
+| Contrast, targets, colour, sizing conventions | ✅ automated, §§1–5 below |
 | Pressed states on every tappable surface | ✅ one gap found and fixed (§6) |
 | Haptics on keypad, hold-complete, error | ✅ verified (§7) |
-| `pnpm test` passes | ✅ 277 across 20 suites |
-| **Seven Maestro flows written *and green*** | ⚠️ **run on an Android emulator and the iOS simulator, not green** — see [E2E results](#e2e-results-close-out) |
-| **TalkBack walkthrough of all four journeys** | ❌ **not done** |
-| **VoiceOver walkthrough of all four journeys** | ❌ **not done** |
+| `pnpm test` | ✅ 320 across 23 suites |
+| **Seven Maestro flows green on both platforms** | ⚠️ **`01` passes on both; `02`–`07` failed in the close-out run and are due a re-run** — see [E2E results](#e2e-results-close-out) |
+| **TalkBack walkthrough** | ❌ **not done** |
+| **VoiceOver walkthrough** | ❌ **not done** |
 | **Low-end Android device pass** | ❌ **not done** |
 | **Biometric sign-in verified by hand** | ⚠️ **Android emulator fingerprint and iOS simulator Face ID only** — see [Manual checks](#manual-checks) |
 
-### Why the second half is outstanding
+### Why the rest is outstanding
 
-Most remaining items need hardware. The Maestro flows have now been run against
-installed builds (results below). Most of them fail, and the main reason is a
-mismatch between the flows and the mock rather than broken journeys: the mock
-API holds the loan in memory, so it is gone after the cold start each flow's
-`launchApp` performs, and every flow after `01` expects to land on an active
-loan.
+Most remaining items need hardware. In the close-out run, flows `02`–`07`
+failed for one shared reason: the mock API held the loan in memory, so each
+flow's cold `launchApp` lost it. The mock now stores the loan across restarts
+(#26). The table below records the run as it happened, against builds made
+before that fix, and will be updated after a re-run on fresh builds.
 
 `.maestro/02-returning.yaml` still cannot run unattended under Maestro alone:
 `runScript` has no shell access, so the biometric match has to come from
@@ -86,8 +80,8 @@ The iOS run took about 55 minutes of its half-day timebox.
 **Same cause** means the mock API keeps the loan in memory
 (`src/api/mock/index.ts`). It is designed to be server-held, and
 `persistence.ts` deliberately leaves it out, so a cold start has no loan.
-Fixing that means changing the app or restructuring the flows, so it is
-recorded here rather than fixed. To check the journeys themselves, `04`–`07`
+It was recorded here at the time rather than fixed; the mock has since been
+changed to keep the loan across a restart (#26). To check the journeys themselves, `04`–`07`
 were each run once more with their `launchApp` + `sign-in` steps replaced by
 `runFlow: 01-first-run.yaml`, which keeps the loan in the same app session.
 With the fixes below, all four passed that way on both platforms. Those were
@@ -301,8 +295,9 @@ WCAG 1.4.11 requires 3:1 for visual information needed to identify a UI
 component. The search field on `help` is white on a near-white surface with a
 `#C9CCDC` border, so neither boundary reaches it. `Chip` uses the same token.
 
-**Not changed.** `border` comes from the handoff's own token table, and PLAN §8a
-is explicit that where the two disagree, the token table wins. It is also
+**Not changed.** `border` comes from the handoff's own token table, and the
+build's rule is that where the token table and other guidance disagree, the
+token table wins. It is also
 arguable rather than clear-cut: the field carries a "Search help" placeholder,
 which identifies it by other means.
 
@@ -320,8 +315,8 @@ is the same kind of change the handoff already made twice for AA.
 
 These are **not** WCAG failures — press feedback is not required to meet a
 contrast ratio against its resting state, and the action confirms the press. But
-at 1.09 the state is close to invisible on a low-end screen in daylight, which
-PLAN §8 calls the actual market.
+at 1.09 the state is close to invisible on a low-end screen in daylight, which is
+the market this app is for.
 
 Recorded in `contrast.test.ts` rather than asserted, so the numbers live in the
 repo. **Needs:** a design call, not a code fix.
@@ -338,14 +333,14 @@ the empty state. The FAQ's repayment answers now describe wallet repayment, and
 ## Not verifiable without hardware
 
 The detail behind the ⚠ table at the top. Stated plainly rather than implied,
-per PLAN §6b — and worth being specific about *what each one would catch*, since
+and worth being specific about *what each one would catch*, since
 "needs a device" is otherwise easy to read as a formality.
 
 | | what it would actually catch |
 |---|---|
 | **TalkBack** (Android) | Whether the composed row labels in §3 are announced as one sentence or read past. The automated test asserts the `accessible` prop is set; only a screen reader proves the effect |
 | **VoiceOver** (iOS) | Same, and the one most worth doing — the composed-label defect this fixed was found in review, not by a test |
-| **Low-end Android** | Finding B. A 1.09 pressed state is a number on a page until someone tries to see it on a cheap panel in daylight. PLAN §8 calls this the actual market |
+| **Low-end Android** | Finding B. A 1.09 pressed state is a number on a page until someone tries to see it on a cheap panel in daylight, which is the market this app is for |
 | **Biometric prompts** | That `lock` → `active` completes at all on real hardware. Checked by hand on the Android emulator and the iOS simulator only (see Manual checks), not on a physical device |
 | **Content sizing** | Large-text and display-scaling behaviour, which nothing in this repo tests. A 48px target at 200% text is not still 48px of usable space |
 | **The seven Maestro flows** | Whether the journeys hold end to end against an installed build. Run on an Android emulator and the iOS simulator at close-out, with only `01` green — see [E2E results](#e2e-results-close-out) |
