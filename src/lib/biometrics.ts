@@ -1,5 +1,5 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 /**
  * Fingerprint / Face ID, with **real** capability detection.
@@ -33,9 +33,45 @@ export async function capability(): Promise<BiometricCapability> {
   return { available: true, kind: face && Platform.OS === 'ios' ? 'face' : 'fingerprint' };
 }
 
+/** The longest `authenticate` waits for the app to become active again. */
+export const ACTIVE_WAIT_MS = 2000;
+
+/**
+ * Resolves once the app is no longer inactive, or after `ACTIVE_WAIT_MS`
+ * regardless.
+ *
+ * The system biometric sheet makes the app inactive, and on iOS it is still
+ * dismissing for about half a second after `authenticateAsync` resolves.
+ * Navigating inside that window intermittently left the window blank in
+ * end-to-end runs on the iOS simulator: the lock screen replaced itself with
+ * `loading`, `loading` replaced itself with `active`, and nothing drew. Waiting
+ * for the app to be active first takes the sheet's dismissal out of the race.
+ * The cap means a platform that never reports `active` delays sign-in rather
+ * than blocking it.
+ */
+export function untilActive(): Promise<void> {
+  // Only `inactive` means a system sheet is still up. Android never reports
+  // it, and an unknown state is no reason to hold sign-in.
+  if (AppState.currentState !== 'inactive') return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      subscription.remove();
+      resolve();
+    };
+    const timer = setTimeout(done, ACTIVE_WAIT_MS);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') done();
+    });
+  });
+}
+
 /**
  * Prompts. Returns whether the borrower authenticated — never throws, because
- * every caller has a PIN path to fall back to.
+ * every caller has a PIN path to fall back to. Resolves only once the system
+ * sheet has gone and the app is active again, so callers can navigate on the
+ * result straight away (see `untilActive`).
  */
 export async function authenticate(promptMessage: string): Promise<boolean> {
   const cap = await capability();
@@ -49,6 +85,7 @@ export async function authenticate(promptMessage: string): Promise<boolean> {
       disableDeviceFallback: true,
       cancelLabel: 'Use PIN instead',
     });
+    await untilActive();
     return result.success;
   } catch {
     return false;
