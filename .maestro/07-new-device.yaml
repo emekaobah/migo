@@ -3,10 +3,6 @@
 # Signing out unbinds the phone, so this flow runs last: if it fails partway,
 # everything after it would have to re-authorise. It sets the same PIN the
 # sign-in helper uses, so a pass leaves the phone as it found it.
-#
-# The confirmation screen states what does *not*
-# change, which is the part that keeps a destructive action from feeling like
-# losing the loan.
 appId: com.emekaobah.migo
 ---
 - launchApp
