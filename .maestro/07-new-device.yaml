@@ -1,9 +1,8 @@
-# Journey 7 — sign out → newdevice → authorise.
+# Journey 7 — sign out → newdevice → authorise → new PIN → signed in.
 #
-# Signing out unbinds the phone, so this flow runs last: everything after it
-# would need to enrol again. The confirmation screen states what does *not*
-# change, which is the part that keeps a destructive action from feeling like
-# losing the loan.
+# Signing out unbinds the phone, so this flow runs last: if it fails partway,
+# everything after it would have to re-authorise. It sets the same PIN the
+# sign-in helper uses, so a pass leaves the phone as it found it.
 appId: com.emekaobah.migo
 ---
 - launchApp
@@ -30,7 +29,22 @@ appId: com.emekaobah.migo
 - tapOn:
     id: 'authorised'
 
-# Authorisation binds the device and returns to the returning sign-in screen.
+# Sign-out cleared the PIN, so authorising leads to setting a new one — not to
+# the lock screen, whose PIN pad would have nothing behind it.
 - extendedWaitUntil:
-    visible: 'Welcome back'
+    visible: 'Set a 6-digit backup PIN'
+    timeout: 10000
+# Same push-transition wait as 01-first-run.yaml: the first keypad tap can be
+# lost without it.
+- waitForAnimationToEnd
+- repeat:
+    times: 6
+    commands:
+      - tapOn: '1'
+- tapOn:
+    id: 'finish'
+
+# The loan survived the sign-out — it is server-held.
+- extendedWaitUntil:
+    visible: 'Your loan'
     timeout: 10000

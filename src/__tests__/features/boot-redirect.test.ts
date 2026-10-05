@@ -1,4 +1,5 @@
 import { bootRedirect, type BootState } from '@/features/session/boot-redirect';
+import { EMPTY, SIGNED_OUT } from '@/state/persistence';
 
 /**
  * All branches (PLAN §8a).
@@ -42,6 +43,17 @@ describe('bootRedirect', () => {
     // deviceBound: true without enrolled is not a reachable state, but the
     // function must not fall through to a signed-in route if it ever occurs.
     expect(bootRedirect({ enrolled: false, deviceBound: true })).toBe('/(onboarding)/enrol');
+  });
+
+  it('sends a signed-out phone to re-authorise, not to enrol', () => {
+    // Sign-out promises "dial *561*9# to authorise it". Enrolment would ask for
+    // an SMS code instead — and the in-session route after signing out is
+    // `newdevice`, so a cold start has to agree with it.
+    expect(bootRedirect(SIGNED_OUT)).toBe('/(session)/newdevice');
+  });
+
+  it('sends a fresh install to enrol', () => {
+    expect(bootRedirect(EMPTY)).toBe('/(onboarding)/enrol');
   });
 
   it('is pure — the same state always gives the same route', () => {

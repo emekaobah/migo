@@ -8,7 +8,7 @@ usually left out.
 
 | | |
 |---|---|
-| **Automated** | 320 tests, 23 suites. `theme/contrast.test.ts` (35) and `screens/a11y.test.tsx` (32) cover this list |
+| **Automated** | 334 tests, 27 suites. `theme/contrast.test.ts` (35) and `screens/a11y.test.tsx` (32) cover this list |
 | **Still needs a device** | TalkBack, VoiceOver, low-end Android, biometric prompts on physical hardware |
 | **Open findings** | 2, listed at the end. Neither blocks the build |
 
@@ -24,8 +24,8 @@ Stated up front so a green CI badge does not read as finished work.
 | Contrast, targets, colour, sizing conventions | ✅ automated, §§1–5 below |
 | Pressed states on every tappable surface | ✅ one gap found and fixed (§6) |
 | Haptics on keypad, hold-complete, error | ✅ verified (§7) |
-| `pnpm test` | ✅ 320 across 23 suites |
-| **Seven Maestro flows green on both platforms** | ⚠️ **`01` passes on both; `02`–`07` failed in the close-out run and are due a re-run** — see [E2E results](#e2e-results-close-out) |
+| `pnpm test` | ✅ 334 across 27 suites |
+| Seven Maestro flows green on both platforms | ✅ all seven pass on the Android emulator and the iOS simulator — see [E2E results](#e2e-results-close-out) |
 | **TalkBack walkthrough** | ❌ **not done** |
 | **VoiceOver walkthrough** | ❌ **not done** |
 | **Low-end Android device pass** | ❌ **not done** |
@@ -33,11 +33,8 @@ Stated up front so a green CI badge does not read as finished work.
 
 ### Why the rest is outstanding
 
-Most remaining items need hardware. In the close-out run, flows `02`–`07`
-failed for one shared reason: the mock API held the loan in memory, so each
-flow's cold `launchApp` lost it. The mock now stores the loan across restarts
-(#26). The table below records the run as it happened, against builds made
-before that fix, and will be updated after a re-run on fresh builds.
+Every remaining item needs hardware: a screen reader, a low-end phone, or a
+physical sensor.
 
 `.maestro/02-returning.yaml` still cannot run unattended under Maestro alone:
 `runScript` has no shell access, so the biometric match has to come from
@@ -52,95 +49,73 @@ by PIN.
 
 | Flow | Android | iOS |
 |---|---|---|
-| `01-first-run` | ✅ pass | ✅ pass (with no Face ID enrolled on the simulator) |
-| `02-returning` | ❌ fail — fingerprint sign-in completes (match sent with `adb emu finger touch 1`), but the app lands on offers, not `Your loan`, because the mock's loan does not survive the cold start | ❌ fail — run on its own with Face ID enrolled and the match sent from a shell: sign-in completes, but the app lands on offers, not `Your loan`, because the mock's loan does not survive the cold start |
-| `03-pin-fallback` | ❌ fail — PIN sign-in completes, then lands on offers, not `Your loan` (same cause) | ❌ fail — PIN sign-in completes, then lands on offers, not `Your loan` (same cause) |
-| `04-repayment` | ❌ fail — `sign-in` helper does not reach `Your loan` (same cause) | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
-| `05-extension` | ❌ fail — `sign-in` helper does not reach `Your loan` (same cause) | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
-| `06-support` | ❌ fail — `sign-in` helper does not reach `Your loan` (same cause) | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
-| `07-new-device` | ❌ fail — `sign-in` helper does not reach `Your loan` (same cause) | ❌ fail — `sign-in` helper times out waiting for `Your loan` (same cause) |
+| `01-first-run` | ✅ pass | ✅ pass |
+| `02-returning` | ✅ pass (fingerprint match sent with `adb emu finger touch 1`) | ✅ pass (Face ID match sent with `notifyutil`) |
+| `03-pin-fallback` | ✅ pass | ✅ pass |
+| `04-repayment` | ✅ pass | ✅ pass |
+| `05-extension` | ✅ pass | ✅ pass |
+| `06-support` | ✅ pass | ✅ pass |
+| `07-new-device` | ✅ pass | ✅ pass |
 
-Android build: EAS profile `preview` (APK, internal distribution, Release, not a
-dev client), EAS build `0bdee829-1222-461d-bd85-1b89e6b2b1e5`, built remotely
-on 2026-10-04 from commit `a5e921e`. Install link:
-<https://expo.dev/accounts/emekaobah/projects/migo/builds/0bdee829-1222-461d-bd85-1b89e6b2b1e5>.
-The APK was installed with `adb install` on the `Medium_Phone_API_36.0`
-emulator (the image reports Android 17, API level 37) and run with Maestro
-2.10.0. Installing from the link onto a physical phone has not been tried yet.
-The Android run took about 1h20m of its half-day timebox, including the build.
+Run on 2026-10-05 against builds of `5f47d5e`, in the order above. A loop sent
+the biometric match every two seconds throughout, since a biometric was
+enrolled on both devices: `02` needs it, and `01`'s hold-to-accept asks for it
+once one is enrolled. `01` followed by `02` was then repeated 15 times on iOS
+and 5 times on Android, with no failures.
 
-iOS build: EAS profile `preview-simulator` (Release, not a dev client), EAS
-build `4edafb2b-dc3d-4848-b25b-10e0175dd811`, built remotely on 2026-10-04 from
-`main` at `a5e921e` plus the new profile (EAS records the commit as `c5a1b53`). Installed with
-`xcrun simctl install` on an iPhone 16 simulator running iOS 18.3, and run with
-Maestro 2.10.0. A fresh install opens on enrolment. A deep link to the dev-only
-`kitchen-sink` route redirects back to it, so no developer screen is reachable.
-The iOS run took about 55 minutes of its half-day timebox.
+- **Android:** EAS profile `preview` (APK, internal distribution, Release, not
+  a dev client), build
+  [`e078ef05`](https://expo.dev/accounts/emekaobah/projects/migo/builds/e078ef05-54d1-4177-8eef-29a7c7bad67c),
+  installed with `adb install` on the `Medium_Phone_API_36.0` emulator (the
+  image reports Android 17, API level 37).
+- **iOS:** EAS profile `preview-simulator` (Release, not a dev client), build
+  [`ab99fa3b`](https://expo.dev/accounts/emekaobah/projects/migo/builds/ab99fa3b-6618-4108-97ef-5142ad3c19e1),
+  installed with `xcrun simctl install` on an iPhone 16 simulator running iOS
+  18.3.
+- **Maestro** 2.10.0 on both.
 
-**Same cause** means the mock API keeps the loan in memory
-(`src/api/mock/index.ts`). It is designed to be server-held, and
-`persistence.ts` deliberately leaves it out, so a cold start has no loan.
-It was recorded here at the time rather than fixed; the mock has since been
-changed to keep the loan across a restart (#26). To check the journeys themselves, `04`–`07`
-were each run once more with their `launchApp` + `sign-in` steps replaced by
-`runFlow: 01-first-run.yaml`, which keeps the loan in the same app session.
-With the fixes below, all four passed that way on both platforms. Those were
-diagnostic runs, not the committed flows.
+### What it took to get there
 
-Other things that showed up while running the suite:
+The first close-out run, on 2026-10-04, passed only `01`. These are the fixes
+since, in the order they were found.
 
-- Running `maestro test .maestro` with Maestro 2.10 ran all seven flows,
-  including `02-returning`, so the `config.yaml` list was not applied. The
-  likely cause is the file itself rather than Maestro: it is written as a flow
-  (`appId`, `---`, then `flows:`), so the `flows:` list in the second document
-  is probably never read, and it has no `executionOrder`. Not fixed here.
-- `01-first-run` passes unattended only while no biometric is enrolled on the
-  device. With Face ID enrolled on the simulator or a fingerprint enrolled on
-  the emulator, hold-to-accept also asks for it and the flow stalls at the
-  system prompt. On Android it also passed with a fingerprint enrolled and
-  `adb emu finger touch 1` sent from a watcher script when the prompt appeared.
+- **The loan did not survive a restart** (#26). The mock held it in memory, so
+  every flow's cold `launchApp` lost it and `02`–`07` landed on offers. The
+  mock now stores its state the way a server would.
+- **The wallet's waiting state was missed on Android** (flow fix, `04`). After
+  "Get my wallet details", Maestro waits for the screen to settle, and the
+  waiting card's spinner never does. On Android that wait outlasted the mock's
+  six-second payment window, so the card had already turned to "received". The
+  tap now caps its settle wait at 500 ms.
+- **The window went blank after a Face ID sign-in** (app fix, iOS, about one
+  run in five). A native view dump showed react-native-screens holding an
+  empty screen whose React content had already unmounted. `lock` replaced
+  itself with `loading`, and `loading`, with the mock answering `getLoan`
+  instantly, replaced itself again while that transition was still running.
+  `loading` now waits for its entry transition to end before it navigates.
+- **Re-authorising after sign-out left a broken session** (app fix, `07`). The
+  lock screen greeted "there" and offered a PIN that sign-out had wiped, and a
+  cold start sent the borrower to enrolment. Authorising now leads to setting
+  a new PIN.
+- **Flow edits from the first run:** selectors brought in line with the app's
+  copy and accessible labels, `waitForAnimationToEnd` before keypad taps, a
+  `helpers/back.yaml` that uses the in-screen Back on iOS and system back on
+  Android, and the account avatar tapped by its label.
 
-Flow fixes made during the run. They change selectors and steps only, not app
-code. The `01` edits pass as committed on both platforms; the `06` and `07`
-edits only passed in the diagnostic runs above, because the committed flows fail
-at sign-in first:
-
-- `01`: removed `duration: 1500` from `longPressOn`, because Maestro 2.10
-  rejects it as an unknown property and the flow would not parse. The built-in
-  long press is long enough for the hold.
-- `01`: updated stale copy. `Sign in to Migo` became
-  `Sign in or create your Migo account`, and `.*[Ee]nrolment code.*` became
-  `Enter the code we sent you`.
-- `01`: `30 days` became `30 days.*` and `Paid into` became `Paid into.*`,
-  because on iOS the accessible label also includes the payment count and the
-  account.
-- `01`: added `waitForAnimationToEnd` before the PIN taps. Without it, one of
-  the six taps was lost on iOS.
-- `06`: `Chat with support` became `Chat with support.*`, because the card's
-  label carries the reply time.
-- `06`: added `pressKey: Enter` after clearing the search. Otherwise the iOS
-  keyboard covers the section list, and the next tap lands on a key.
-- `06`: going back now uses a new `helpers/back.yaml`. It taps the in-screen
-  `Back` control on iOS and uses the system back on Android. A plain
-  `tapOn: 'Back'` fails on Android, because `HeaderRow` leaves out the
-  in-screen back control there by design, and a plain `back` does nothing on
-  iOS. The iOS run used `tapOn: 'Back'` directly; the helper's iOS branch is the
-  same step but has not been re-run.
-- `07`: the avatar is now tapped by its label (`Account, .*`) instead of
-  `point: '90%,8%'`, which missed it on iPhone 16.
-- `07`: the `We don't recognise this phone.` heading has no trailing full
-  stop, so the selector no longer has one.
+One thing still worth knowing: `maestro test .maestro` runs every flow,
+including `02`, so the `flows:` list in `config.yaml` is not applied. The file
+is written as a flow (`appId`, `---`, then `flows:`), so that list is probably
+never read. The runs above invoked each flow by name.
 
 ### Manual checks
 
 - **Face ID returning sign-in (iOS simulator): ✅ pass.** This checks the
-  biometric sign-in itself; where the app lands afterwards is the `02` row's
-  failure, not this check's. Face ID was enrolled
+  biometric sign-in itself. Face ID was enrolled
   with `notifyutil -s com.apple.BiometricKit.enrollmentChanged 1` (then `-p`).
   After enrolling in the app, a cold start showed the lock screen. Tapping the
   biometric target raised the system Face ID sheet.
   `com.apple.BiometricKit_Sim.pearl.match` signed in and went on to the
-  post-sign-in screen (offers, for the reason above).
+  loan screen.
   `com.apple.BiometricKit_Sim.pearl.nomatch` showed iOS's "Face Not
   Recognized" alert, with "Use PIN instead" as the fallback. Face ID signing on
   hold-to-accept also completed on a match. This was a simulator, not a
@@ -151,11 +126,11 @@ at sign-in first:
   the lock screen. Tapping the biometric target raised the system prompt
   ("Sign in to Migo with your fingerprint"). An unenrolled finger
   (`finger touch 2`) left the prompt up and did not sign in. The enrolled
-  finger signed in and went on to the post-sign-in screen (offers, for the
-  reason above). The fingerprint confirm on hold-to-accept also completed on
+  finger signed in and went on to the loan screen. The fingerprint confirm on hold-to-accept also completed on
   a match. This was an emulator, not a physical device.
 - **Fresh install opens on enrolment, no dev screens: ✅ pass on both
-  platforms.** On iOS, see the build note above. On Android, the APK
+  platforms.** On iOS, a fresh install opens on enrolment, and a deep link to the dev-only
+  `kitchen-sink` route redirects back to it. On Android, the APK
   installed on the emulator and opened on enrolment ("Sign in or create your
   Migo account"). The launcher label is "Migo", and the icon and splash show
   the navy `migo` wordmark stand-in. The menu key opened no dev menu, and the
@@ -343,7 +318,7 @@ and worth being specific about *what each one would catch*, since
 | **Low-end Android** | Finding B. A 1.09 pressed state is a number on a page until someone tries to see it on a cheap panel in daylight, which is the market this app is for |
 | **Biometric prompts** | That `lock` → `active` completes at all on real hardware. Checked by hand on the Android emulator and the iOS simulator only (see Manual checks), not on a physical device |
 | **Content sizing** | Large-text and display-scaling behaviour, which nothing in this repo tests. A 48px target at 200% text is not still 48px of usable space |
-| **The seven Maestro flows** | Whether the journeys hold end to end against an installed build. Run on an Android emulator and the iOS simulator at close-out, with only `01` green — see [E2E results](#e2e-results-close-out) |
+| **The seven Maestro flows** | Whether the journeys hold end to end against an installed build. All seven pass on an Android emulator and the iOS simulator — see [E2E results](#e2e-results-close-out). Physical devices are untested |
 
 ### One thing the automated suite structurally cannot cover
 

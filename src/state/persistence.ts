@@ -42,6 +42,16 @@ export const EMPTY: DurableState = {
   name: null,
 };
 
+/**
+ * What a signed-out phone keeps: only that a Migo borrower used it.
+ *
+ * Everything that identifies the borrower or signs them in goes — name, phone,
+ * biometric, PIN. `enrolled` stays so a cold start lands on `newdevice` and
+ * re-authorising over USSD, rather than on enrolment and an SMS code. That is
+ * the route the sign-out screen promises.
+ */
+export const SIGNED_OUT: DurableState = { ...EMPTY, enrolled: true };
+
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string';
@@ -93,7 +103,7 @@ export async function save(state: DurableState): Promise<void> {
   await SecureStore.setItemAsync(KEY, JSON.stringify(state));
 }
 
-/** Sign-out. Clears the durable slice; PIN material is cleared separately. */
-export async function clear(): Promise<void> {
-  await SecureStore.deleteItemAsync(KEY);
+/** Sign-out. Writes `SIGNED_OUT`; PIN material is cleared separately. */
+export async function signOut(): Promise<void> {
+  await save(SIGNED_OUT);
 }

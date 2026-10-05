@@ -1,4 +1,4 @@
-import { clear, EMPTY, load, save } from '@/state/persistence';
+import { EMPTY, load, save, signOut, SIGNED_OUT } from '@/state/persistence';
 
 import { secureStoreMock } from '../setup';
 
@@ -90,12 +90,19 @@ describe('load', () => {
   });
 });
 
-describe('clear', () => {
-  it('removes the record, so a sign-out does not survive a restart', async () => {
-    await save({ ...EMPTY, enrolled: true });
-    await clear();
+describe('signOut', () => {
+  it('keeps only that a borrower enrolled here, across a restart', async () => {
+    await save({
+      enrolled: true,
+      deviceBound: true,
+      bio: true,
+      pinSet: true,
+      phone: '8031234567',
+      name: 'Tunde',
+    });
+    await signOut();
 
-    expect(secureStoreMock.peek(KEY)).toBeNull();
-    await expect(load()).resolves.toEqual(EMPTY);
+    await expect(load()).resolves.toEqual(SIGNED_OUT);
+    expect(SIGNED_OUT).toEqual({ ...EMPTY, enrolled: true });
   });
 });

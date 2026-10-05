@@ -15,7 +15,14 @@ appId: com.emekaobah.migo
 - assertVisible: 'Pay'
 - assertVisible: '.*Remaining after this payment.*'
 - tapOn: 'Sterling Bank'
-- tapOn: 'Get my wallet details'
+# The wallet's waiting card has a spinner that never stops animating, so by
+# default Maestro waits for the screen to settle until its timeout. On Android
+# that wait outlasted the mock's 6-second payment window, and the card had
+# already turned to "received" before the next step looked for it. A short
+# settle timeout keeps the waiting state inside the window.
+- tapOn:
+    text: 'Get my wallet details'
+    waitToSettleTimeoutMs: 500
 
 # ── wallet ─────────────────────────────────────────────────────────────────
 - assertVisible: 'Transfer to this account'
