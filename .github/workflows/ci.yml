@@ -44,6 +44,6 @@ jobs:
       # SonarCloud runs Automatic Analysis, which cannot import a coverage
       # report — and that is a deliberate trade: Automatic Analysis needs no
       # token and always runs, including on PRs that cannot see secrets.
-      # PLAN §6b targets specific high-value tests rather than a percentage.
+      # The suite targets specific high-value tests rather than a coverage percentage.
       - name: Test with coverage
         run: pnpm test:coverage
